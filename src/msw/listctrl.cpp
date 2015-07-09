@@ -40,6 +40,7 @@
 
 #include "wx/imaglist.h"
 #include "wx/vector.h"
+#include "wx/msw/uxtheme.h"
 
 #include "wx/msw/private.h"
 #include "wx/msw/private/keyboard.h"
@@ -275,8 +276,13 @@ bool wxListCtrl::Create(wxWindow *parent,
     // GetTextColour will always return black
     SetTextColour(GetDefaultAttributes().colFg);
 
-    if ( InReportView() )
-        MSWSetExListStyles();
+    // Maybe call GetIfActive() instead of Get(), but somehow did not work?
+    if ( wxUxThemeEngine *theme = wxUxThemeEngine::Get() )
+    {
+        theme->SetWindowTheme(GetHwnd(), L"EXPLORER", NULL);
+    }
+
+    MSWSetExListStyles();
 
     return true;
 }
@@ -285,23 +291,32 @@ void wxListCtrl::MSWSetExListStyles()
 {
     // for comctl32.dll v 4.70+ we want to have some non default extended
     // styles because it's prettier (and also because wxGTK does it like this)
-    if ( wxApp::GetComCtl32Version() >= 470 )
+    int ver = wxApp::GetComCtl32Version();
+    if ( ver >= 470 )
     {
-        ::SendMessage
-        (
-            GetHwnd(), LVM_SETEXTENDEDLISTVIEWSTYLE, 0,
-            // LVS_EX_LABELTIP shouldn't be used under Windows CE where it's
-            // not defined in the SDK headers
+        unsigned long exstyle = 0;
+        if ( InReportView() )
+        {
+            exstyle |=
+                // LVS_EX_LABELTIP shouldn't be used under Windows CE where it's
+                // not defined in the SDK headers
 #ifdef LVS_EX_LABELTIP
-            LVS_EX_LABELTIP |
+                LVS_EX_LABELTIP |
 #endif
-            LVS_EX_FULLROWSELECT |
-            LVS_EX_SUBITEMIMAGES |
-            // normally this should be governed by a style as it's probably not
-            // always appropriate, but we don't have any free styles left and
-            // it seems better to enable it by default than disable
-            LVS_EX_HEADERDRAGDROP
-        );
+                LVS_EX_FULLROWSELECT |
+                LVS_EX_SUBITEMIMAGES |
+                // normally this should be governed by a style as it's probably not
+                // always appropriate, but we don't have any free styles left and
+                // it seems better to enable it by default than disable
+                LVS_EX_HEADERDRAGDROP;
+        }
+
+        if ( ver >= 600 )
+        {
+            exstyle |= LVS_EX_DOUBLEBUFFER;
+        }
+
+        ::SendMessage(GetHwnd(), LVM_SETEXTENDEDLISTVIEWSTYLE, 0, exstyle);
     }
 }
 
@@ -402,9 +417,12 @@ void wxListCtrl::UpdateStyle()
         {
             ::SetWindowLong(GetHwnd(), GWL_STYLE, dwStyleNew);
 
-            // if we switched to the report view, set the extended styles for
+            // if we switched to a different view, set the extended styles for
             // it too
-            if ( !(dwStyleOld & LVS_REPORT) && (dwStyleNew & LVS_REPORT) )
+            if ( (!(dwStyleOld & LVS_ICON) && (dwStyleNew & LVS_ICON)) ||
+                 (!(dwStyleOld & LVS_LIST) && (dwStyleNew & LVS_LIST)) ||
+                 (!(dwStyleOld & LVS_REPORT) && (dwStyleNew & LVS_REPORT)) ||
+                 (!(dwStyleOld & LVS_SMALLICON) && (dwStyleNew & LVS_SMALLICON)) )
                 MSWSetExListStyles();
         }
     }
