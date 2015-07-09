@@ -1477,6 +1477,15 @@ public:
      */
     virtual long GetValueAsLong(int row, int col);
 
+     /**
+        Returns the value of the given cell as a wxLongLong_t.
+
+        This should only be called if CanGetValueAs() returns @true when called
+        with @c wxGRID_VALUE_NUMBER64 argument. Default implementation always
+        return 0.
+     */
+    virtual wxLongLong_t GetValueAsLongLong(int row, int col);
+
     /**
         Returns the value of the given cell as a double.
 
@@ -1511,6 +1520,15 @@ public:
         anything.
      */
     virtual void SetValueAsLong(int row, int col, long value);
+
+     /**
+        Sets the value of the given cell as a wxLongLong_t.
+
+        This should only be called if CanSetValueAs() returns @true when called
+        with @c wxGRID_VALUE_NUMBER64 argument. Default implementation doesn't do
+        anything.
+     */
+    virtual void SetValueAsLongLong(int row, int col, wxLongLong_t value);
 
     /**
         Sets the value of the given cell as a double.

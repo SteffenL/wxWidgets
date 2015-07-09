@@ -46,11 +46,13 @@ extern WXDLLIMPEXP_DATA_ADV(const char) wxGridNameStr[];
 #define wxGRID_VALUE_STRING     wxT("string")
 #define wxGRID_VALUE_BOOL       wxT("bool")
 #define wxGRID_VALUE_NUMBER     wxT("long")
+#define wxGRID_VALUE_NUMBER64   wxT("longlong")
 #define wxGRID_VALUE_FLOAT      wxT("double")
 #define wxGRID_VALUE_CHOICE     wxT("choice")
 
 #define wxGRID_VALUE_TEXT wxGRID_VALUE_STRING
 #define wxGRID_VALUE_LONG wxGRID_VALUE_NUMBER
+#define wxGRID_VALUE_LONGLONG wxGRID_VALUE_NUMBER64
 
 // magic constant which tells (to some functions) to automatically calculate
 // the appropriate size
@@ -718,10 +720,12 @@ public:
     virtual bool CanSetValueAs( int row, int col, const wxString& typeName );
 
     virtual long GetValueAsLong( int row, int col );
+    virtual wxLongLong_t GetValueAsLongLong( int row, int col );
     virtual double GetValueAsDouble( int row, int col );
     virtual bool GetValueAsBool( int row, int col );
 
     virtual void SetValueAsLong( int row, int col, long value );
+    virtual void SetValueAsLongLong( int row, int col, wxLongLong_t value );
     virtual void SetValueAsDouble( int row, int col, double value );
     virtual void SetValueAsBool( int row, int col, bool value );
 

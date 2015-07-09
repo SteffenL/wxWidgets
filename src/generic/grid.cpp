@@ -1188,6 +1188,11 @@ long wxGridTableBase::GetValueAsLong( int WXUNUSED(row), int WXUNUSED(col) )
     return 0;
 }
 
+wxLongLong_t wxGridTableBase::GetValueAsLongLong( int WXUNUSED(row), int WXUNUSED(col) )
+{
+    return 0;
+}
+
 double wxGridTableBase::GetValueAsDouble( int WXUNUSED(row), int WXUNUSED(col) )
 {
     return 0.0;
@@ -1200,6 +1205,11 @@ bool wxGridTableBase::GetValueAsBool( int WXUNUSED(row), int WXUNUSED(col) )
 
 void wxGridTableBase::SetValueAsLong( int WXUNUSED(row), int WXUNUSED(col),
                                       long WXUNUSED(value) )
+{
+}
+
+void wxGridTableBase::SetValueAsLongLong( int WXUNUSED(row), int WXUNUSED(col),
+                                          wxLongLong_t WXUNUSED(value) )
 {
 }
 
