@@ -782,6 +782,7 @@ public:
     void SelectRows( unsigned int from, unsigned int to );
     void ReverseRowSelection( unsigned int row );
     bool IsRowSelected( unsigned int row );
+    void SendSelectionChangingEvent( const wxDataViewItem& item);
     void SendSelectionChangedEvent( const wxDataViewItem& item);
 
     void RefreshRow( unsigned int row );
@@ -2782,6 +2783,18 @@ bool wxDataViewMainWindow::IsRowSelected( unsigned int row )
     return m_selection.IsSelected(row);
 }
 
+void wxDataViewMainWindow::SendSelectionChangingEvent( const wxDataViewItem& item)
+{
+    wxWindow *parent = GetParent();
+    wxDataViewEvent le(wxEVT_DATAVIEW_SELECTION_CHANGING, parent->GetId());
+
+    le.SetEventObject(parent);
+    le.SetModel(GetModel());
+    le.SetItem( item );
+
+    parent->ProcessWindowEvent(le);
+}
+
 void wxDataViewMainWindow::SendSelectionChangedEvent( const wxDataViewItem& item)
 {
     wxWindow *parent = GetParent();
@@ -4331,6 +4344,7 @@ void wxDataViewMainWindow::OnMouse( wxMouseEvent &event )
         {
             if ( IsSingleSel() || !IsRowSelected(current) )
             {
+                SendSelectionChangingEvent( GetItemByRow(m_currentRow) );
                 SelectAllRows( false );
                 ChangeCurrentRow(current);
                 SelectRow(m_currentRow,true);
