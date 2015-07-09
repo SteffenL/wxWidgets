@@ -780,7 +780,10 @@ bool wxTreeCtrl::Create(wxWindow *parent,
 
     wxSetCCUnicodeFormat(GetHwnd());
 
-    if ( m_windowStyle & wxTR_TWIST_BUTTONS )
+    // Under Vista and later Explorer uses rotating ("twist") buttons
+    // instead of the default "+/-" ones so apply its theme to the tree
+    // control to implement this style.
+    if ( wxGetWinVersion() >= wxWinVersion_Vista )
     {
         // The Vista+ system theme uses rotating ("twist") buttons, so we map
         // this style to it.

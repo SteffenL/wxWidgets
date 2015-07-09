@@ -40,6 +40,7 @@
 
 #include "wx/imaglist.h"
 #include "wx/vector.h"
+#include "wx/msw/uxtheme.h"
 
 #include "wx/msw/private.h"
 #include "wx/msw/private/keyboard.h"
@@ -281,8 +282,13 @@ bool wxListCtrl::Create(wxWindow *parent,
     // GetTextColour will always return black
     SetTextColour(GetDefaultAttributes().colFg);
 
-    if ( InReportView() )
-        MSWSetExListStyles();
+    // Maybe call GetIfActive() instead of Get(), but somehow did not work?
+    if ( wxUxThemeEngine *theme = wxUxThemeEngine::Get() )
+    {
+        theme->SetWindowTheme(GetHwnd(), L"EXPLORER", NULL);
+    }
+
+    MSWSetExListStyles();
 
     return true;
 }
@@ -395,9 +401,12 @@ void wxListCtrl::UpdateStyle()
         {
             ::SetWindowLong(GetHwnd(), GWL_STYLE, dwStyleNew);
 
-            // if we switched to the report view, set the extended styles for
+            // if we switched to a different view, set the extended styles for
             // it too
-            if ( !(dwStyleOld & LVS_REPORT) && (dwStyleNew & LVS_REPORT) )
+            if ( (!(dwStyleOld & LVS_ICON) && (dwStyleNew & LVS_ICON)) ||
+                 (!(dwStyleOld & LVS_LIST) && (dwStyleNew & LVS_LIST)) ||
+                 (!(dwStyleOld & LVS_REPORT) && (dwStyleNew & LVS_REPORT)) ||
+                 (!(dwStyleOld & LVS_SMALLICON) && (dwStyleNew & LVS_SMALLICON)) )
                 MSWSetExListStyles();
         }
     }
