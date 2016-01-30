@@ -266,11 +266,20 @@ public:
         g_signal_connect( m_widget, "realize",
                       G_CALLBACK (gtk_pseudo_window_realized_callback), this );
 
+        // gtk_widget_modify_bg() is deprecated in 3.0 but doesn't seem to have
+        // any obvious replacement as gtk_widget_override_background_color()
+        // mentioned in the deprecation message it is itself deprecated in
+        // 3.16, so just continue using it for now. In longer term the best
+        // would probably be to catch "draw" signal and paint the background
+        // ourselves.
         GdkColor col;
         col.red = 128 * 256;
         col.green = 192 * 256;
         col.blue = 255 * 256;
+
+        wxGCC_WARNING_SUPPRESS(deprecated-declarations)
         gtk_widget_modify_bg( m_widget, GTK_STATE_NORMAL, &col );
+        wxGCC_WARNING_RESTORE(deprecated-declarations)
     }
 
     bool SetTransparent(wxByte WXUNUSED(alpha)) wxOVERRIDE
@@ -1061,11 +1070,7 @@ bool wxAuiManager::AddPane(wxWindow* window, const wxAuiPaneInfo& paneInfo)
         pinfo.name.Printf(wxT("%08lx%08x%08x%08lx"),
              (unsigned long)(wxPtrToUInt(pinfo.window) & 0xffffffff),
              (unsigned int)time(NULL),
-#ifdef __WXWINCE__
-             (unsigned int)GetTickCount(),
-#else
              (unsigned int)clock(),
-#endif
              (unsigned long)m_panes.GetCount());
     }
 
@@ -3854,7 +3859,12 @@ void wxAuiManager::OnRender(wxAuiManagerEvent& evt)
         wxAuiDockUIPart& part = m_uiParts.Item(i);
 
         // don't draw hidden pane items or items that aren't windows
-        if (part.sizer_item && ((!part.sizer_item->IsWindow() && !part.sizer_item->IsSpacer() && !part.sizer_item->IsSizer()) || !part.sizer_item->IsShown()))
+        if (part.sizer_item &&
+                ((!part.sizer_item->IsWindow() &&
+                  !part.sizer_item->IsSpacer() &&
+                  !part.sizer_item->IsSizer()) ||
+                  !part.sizer_item->IsShown() ||
+                   part.rect.IsEmpty()))
             continue;
 
         switch (part.type)

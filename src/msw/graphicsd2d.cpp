@@ -46,6 +46,8 @@
 
 #include "wx/graphics.h"
 #include "wx/dc.h"
+#include "wx/dcclient.h"
+#include "wx/dcmemory.h"
 #include "wx/dynlib.h"
 #include "wx/image.h"
 #include "wx/module.h"
@@ -53,6 +55,7 @@
 #include "wx/private/graphics.h"
 #include "wx/stack.h"
 #include "wx/sharedptr.h"
+#include "wx/window.h"
 
 // This must be the last header included to only affect the DEFINE_GUID()
 // occurrences below but not any GUIDs declared in the standard files included
@@ -311,10 +314,10 @@ class wxD2DResourceManager;
 class wxD2DManagedObject
 {
 public:
-    virtual void Bind(wxD2DResourceManager* manager) = NULL;
-    virtual void UnBind() = NULL;
-    virtual bool IsBound() = NULL;
-    virtual wxD2DResourceManager* GetManager() = NULL;
+    virtual void Bind(wxD2DResourceManager* manager) = 0;
+    virtual void UnBind() = 0;
+    virtual bool IsBound() = 0;
+    virtual wxD2DResourceManager* GetManager() = 0;
 
     virtual ~wxD2DManagedObject() {};
 };
@@ -744,7 +747,7 @@ wxCOMPtr<ID2D1Geometry> wxD2DConvertRegionToGeometry(ID2D1Factory* direct2dFacto
         &resultGeometry);
 
     // Cleanup temporaries
-    for (int i = 0; i < rectCount; ++i)
+    for (i = 0; i < rectCount; ++i)
     {
         geometries[i]->Release();
     }
@@ -1025,10 +1028,14 @@ private :
 
 wxD2DPathData::wxD2DPathData(wxGraphicsRenderer* renderer, ID2D1Factory* d2dFactory) :
     wxGraphicsPathData(renderer), m_direct2dfactory(d2dFactory),
+    m_currentPoint(D2D1::Point2F(0.0f, 0.0f)),
     m_transformMatrix(D2D1::Matrix3x2F::Identity()),
-    m_figureOpened(false), m_geometryWritable(false)
+    m_figureOpened(false), m_geometryWritable(true)
 {
     m_direct2dfactory->CreatePathGeometry(&m_pathGeometry);
+    // To properly initialize path geometry there is also
+    // necessary to open at least once its geometry sink.
+    m_pathGeometry->Open(&m_geometrySink);
 }
 
 wxD2DPathData::~wxD2DPathData()
@@ -1203,25 +1210,34 @@ void wxD2DPathData::AddCircle(wxDouble x, wxDouble y, wxDouble r)
 // appends an ellipse
 void wxD2DPathData::AddEllipse(wxDouble x, wxDouble y, wxDouble w, wxDouble h)
 {
-    Flush();
+    if ( w <= 0.0 || h <= 0.0 )
+      return;
 
-    wxCOMPtr<ID2D1EllipseGeometry> ellipseGeometry;
-    wxCOMPtr<ID2D1PathGeometry> newPathGeometry;
+    // Calculate radii
+    const wxDouble rx = w / 2.0;
+    const wxDouble ry = h / 2.0;
 
-    D2D1_ELLIPSE ellipse = { { (FLOAT)(x + w / 2), (FLOAT)(y + h / 2) }, (FLOAT)(w / 2), (FLOAT)(h / 2) };
+    MoveToPoint(x, y + ry);
 
-    m_direct2dfactory->CreateEllipseGeometry(ellipse, &ellipseGeometry);
+    D2D1_ARC_SEGMENT arcSegmentUpper =
+    {
+        D2D1::Point2((FLOAT)(x + w), (FLOAT)(y + ry)), // end point
+        D2D1::SizeF((FLOAT)(rx), (FLOAT)(ry)),         // size
+        0.0f,
+        D2D1_SWEEP_DIRECTION_CLOCKWISE,
+        D2D1_ARC_SIZE_SMALL
+    };
+    m_geometrySink->AddArc(arcSegmentUpper);
 
-    m_direct2dfactory->CreatePathGeometry(&newPathGeometry);
-
-    m_geometrySink = NULL;
-    newPathGeometry->Open(&m_geometrySink);
-
-    m_geometryWritable = true;
-
-    ellipseGeometry->CombineWithGeometry(m_pathGeometry, D2D1_COMBINE_MODE_UNION, NULL, m_geometrySink);
-
-    m_pathGeometry = newPathGeometry;
+    D2D1_ARC_SEGMENT arcSegmentLower =
+    {
+        D2D1::Point2((FLOAT)(x), (FLOAT)(y + ry)),     // end point
+        D2D1::SizeF((FLOAT)(rx), (FLOAT)(ry)),         // size
+        0.0f,
+        D2D1_SWEEP_DIRECTION_CLOCKWISE,
+        D2D1_ARC_SIZE_SMALL
+    };
+    m_geometrySink->AddArc(arcSegmentLower);
 }
 
 // gets the last point of the current path, (0,0) if not yet set
@@ -1352,6 +1368,8 @@ public:
     {
     }
 
+    virtual ~wxHatchBitmapSource() {}
+
     HRESULT STDMETHODCALLTYPE GetSize(__RPC__out UINT *width, __RPC__out UINT *height) wxOVERRIDE
     {
         if (width != NULL) *width = 8;
@@ -1372,10 +1390,9 @@ public:
         return S_OK;
     }
 
-    HRESULT STDMETHODCALLTYPE CopyPalette(__RPC__in_opt IWICPalette *palette) wxOVERRIDE
+    HRESULT STDMETHODCALLTYPE CopyPalette(__RPC__in_opt IWICPalette*  WXUNUSED(palette)) wxOVERRIDE
     {
-        palette = NULL;
-        return S_OK;
+        return WINCODEC_ERR_PALETTEUNAVAILABLE;
     }
 
     HRESULT STDMETHODCALLTYPE CopyPixels(
@@ -1449,7 +1466,7 @@ public:
 
     ULONG STDMETHODCALLTYPE Release(void) wxOVERRIDE
     {
-        wxCHECK2_MSG(m_refCount > 0, 0, "Unbalanced number of calls to Release");
+        wxCHECK_MSG(m_refCount > 0, 0, "Unbalanced number of calls to Release");
 
         ULONG refCount = InterlockedDecrement(&m_refCount);
         if (m_refCount == 0)
@@ -2074,6 +2091,7 @@ wxD2DFontData::wxD2DFontData(wxGraphicsRenderer* renderer, ID2D1Factory* d2dFact
 
     wxCOMPtr<IDWriteGdiInterop> gdiInterop;
     hr = wxDWriteFactory()->GetGdiInterop(&gdiInterop);
+    wxCHECK_HRESULT_RET(hr);
 
     LOGFONTW logfont;
     GetObjectW(font.GetHFONT(), sizeof(logfont), &logfont);
@@ -2088,6 +2106,7 @@ wxD2DFontData::wxD2DFontData(wxGraphicsRenderer* renderer, ID2D1Factory* d2dFact
     }
 
     hr = gdiInterop->CreateFontFromLOGFONT(&logfont, &m_font);
+    wxCHECK_HRESULT_RET(hr);
 
     wxCOMPtr<IDWriteFontFamily> fontFamily;
     m_font->GetFontFamily(&fontFamily);
@@ -2115,6 +2134,8 @@ wxD2DFontData::wxD2DFontData(wxGraphicsRenderer* renderer, ID2D1Factory* d2dFact
         &m_textFormat);
 
     delete[] name;
+
+    wxCHECK_HRESULT_RET(hr);
 }
 
 wxCOMPtr<IDWriteTextLayout> wxD2DFontData::CreateTextLayout(const wxString& text) const
@@ -2133,6 +2154,7 @@ wxCOMPtr<IDWriteTextLayout> wxD2DFontData::CreateTextLayout(const wxString& text
         MAX_WIDTH,
         MAX_HEIGHT,
         &textLayout);
+    wxCHECK2_HRESULT_RET(hr, wxCOMPtr<IDWriteTextLayout>(NULL));
 
     DWRITE_TEXT_RANGE textRange = { 0, (UINT32) text.length() };
 
@@ -2251,6 +2273,56 @@ protected:
             &m_wicBitmap);
         wxCHECK_HRESULT_RET(hr);
 
+        // Copy contents of source image to the WIC bitmap.
+        const int width = m_resultImage->GetWidth();
+        const int height = m_resultImage->GetHeight();
+        WICRect rcLock = { 0, 0, width, height };
+        IWICBitmapLock *pLock = NULL;
+        hr = m_wicBitmap->Lock(&rcLock, WICBitmapLockWrite, &pLock);
+        wxCHECK_HRESULT_RET(hr);
+
+        UINT rowStride = 0;
+        hr = pLock->GetStride(&rowStride);
+        if ( FAILED(hr) )
+        {
+            pLock->Release();
+            wxFAILED_HRESULT_MSG(hr);
+            return;
+        }
+
+        UINT bufferSize = 0;
+        BYTE *pBmpBuffer = NULL;
+        hr = pLock->GetDataPointer(&bufferSize, &pBmpBuffer);
+        if ( FAILED(hr) )
+        {
+            pLock->Release();
+            wxFAILED_HRESULT_MSG(hr);
+            return;
+        }
+
+        const unsigned char *imgRGB = m_resultImage->GetData();    // source RGB buffer
+        const unsigned char *imgAlpha = m_resultImage->GetAlpha(); // source alpha buffer
+        for( int y = 0; y < height; y++ )
+        {
+            BYTE *pPixByte = pBmpBuffer;
+            for ( int x = 0; x < width; x++ )
+            {
+                unsigned char r = *imgRGB++;
+                unsigned char g = *imgRGB++;
+                unsigned char b = *imgRGB++;
+                unsigned char a = imgAlpha ? *imgAlpha++ : 255;
+                // Premultiply RGB values
+                *pPixByte++ = (b * a + 127) / 255;
+                *pPixByte++ = (g * a + 127) / 255;
+                *pPixByte++ = (r * a + 127) / 255;
+                *pPixByte++ = a;
+            }
+
+            pBmpBuffer += rowStride;
+        }
+
+        pLock->Release();
+
         // Create the render target
         hr = m_factory->CreateWicBitmapRenderTarget(
             m_wicBitmap,
@@ -2264,26 +2336,72 @@ protected:
 private:
     void FlushRenderTargetToImage()
     {
-        int width = m_resultImage->GetWidth();
-        int height = m_resultImage->GetHeight();
-        int bufferSize = 4 * width * height;
+        const int width = m_resultImage->GetWidth();
+        const int height = m_resultImage->GetHeight();
 
-        BYTE* buffer = new BYTE[bufferSize];
-        m_wicBitmap->CopyPixels(NULL, 4 * width, bufferSize, buffer);
-        unsigned char* dest = m_resultImage->GetData();
+        WICRect rcLock = { 0, 0, width, height };
+        IWICBitmapLock *pLock = NULL;
+        HRESULT hr = m_wicBitmap->Lock(&rcLock, WICBitmapLockRead, &pLock);
+        wxCHECK_HRESULT_RET(hr);
 
-        int k = 0;
-        while (k < width * height)
+        UINT rowStride = 0;
+        hr = pLock->GetStride(&rowStride);
+        if ( FAILED(hr) )
         {
-            wxPBGRAColor color = wxPBGRAColor(buffer + k * 4);
-            dest[k * 3 + 0] = color.r;
-            dest[k * 3 + 1] = color.g;
-            dest[k * 3 + 2] = color.b;
-            ++k;
+            pLock->Release();
+            wxFAILED_HRESULT_MSG(hr);
+            return;
         }
 
-        delete[] buffer;
-    }
+        UINT bufferSize = 0;
+        BYTE *pBmpBuffer = NULL;
+        hr = pLock->GetDataPointer(&bufferSize, &pBmpBuffer);
+        if ( FAILED(hr) )
+        {
+            pLock->Release();
+            wxFAILED_HRESULT_MSG(hr);
+            return;
+        }
+
+        WICPixelFormatGUID pixelFormat;
+        hr = pLock->GetPixelFormat(&pixelFormat);
+        if ( FAILED(hr) )
+        {
+            pLock->Release();
+            wxFAILED_HRESULT_MSG(hr);
+            return;
+        }
+        wxASSERT_MSG( pixelFormat == GUID_WICPixelFormat32bppPBGRA ||
+                  pixelFormat == GUID_WICPixelFormat32bppBGR,
+                  wxS("Unsupported pixel format") );
+
+        // Only premultiplied ARGB bitmaps are supported.
+        const bool hasAlpha = pixelFormat == GUID_WICPixelFormat32bppPBGRA;
+
+        unsigned char* destRGB = m_resultImage->GetData();
+        unsigned char* destAlpha = m_resultImage->GetAlpha();
+        for( int y = 0; y < height; y++ )
+        {
+            BYTE *pPixByte = pBmpBuffer;
+            for ( int x = 0; x < width; x++ )
+            {
+                wxPBGRAColor color = wxPBGRAColor(pPixByte);
+                unsigned char a =  hasAlpha ? color.a : 255;
+                // Undo premultiplication for ARGB bitmap
+                *destRGB++ = (a > 0 && a < 255) ? ( color.r * 255 ) / a : color.r;
+                *destRGB++ = (a > 0 && a < 255) ? ( color.g * 255 ) / a : color.g;
+                *destRGB++ = (a > 0 && a < 255) ? ( color.b * 255 ) / a : color.b;
+                if ( destAlpha )
+                    *destAlpha++ = a;
+
+                pPixByte += 4;
+            }
+
+            pBmpBuffer += rowStride;
+        }
+
+        pLock->Release();
+   }
 
 private:
     wxImage* m_resultImage;
@@ -2794,7 +2912,7 @@ private:
     // A ID2D1DrawingStateBlock represents the drawing state of a render target:
     // the anti aliasing mode, transform, tags, and text-rendering options.
     // The context owns these pointers and is responsible for releasing them.
-    wxStack<wxCOMPtr<ID2D1DrawingStateBlock>> m_stateStack;
+    wxStack<wxCOMPtr<ID2D1DrawingStateBlock> > m_stateStack;
 
     ClipMode m_clipMode;
 
@@ -2803,7 +2921,7 @@ private:
     // A direct2d layer is a device-dependent resource.
     wxCOMPtr<ID2D1Layer> m_clipLayer;
 
-    wxStack<wxCOMPtr<ID2D1Layer>> m_layers;
+    wxStack<wxCOMPtr<ID2D1Layer> > m_layers;
 
     ID2D1RenderTarget* m_cachedRenderTarget;
 
@@ -3336,7 +3454,7 @@ void wxD2DContext::Flush()
 {
     HRESULT result = m_renderTargetHolder->Flush();
 
-    if (result == D2DERR_RECREATE_TARGET)
+    if (result == (HRESULT)D2DERR_RECREATE_TARGET)
     {
         ReleaseDeviceDependentResources();
     }
@@ -3467,7 +3585,9 @@ wxD2DRenderer::wxD2DRenderer()
     result = D2D1CreateFactory(D2D1_FACTORY_TYPE_SINGLE_THREADED, &m_direct2dFactory);
 
     if (FAILED(result))
+    {
         wxFAIL_MSG("Could not create Direct2D Factory.");
+    }
 }
 
 wxD2DRenderer::~wxD2DRenderer()
@@ -3698,6 +3818,12 @@ void wxD2DRenderer::GetVersion(int* major, int* minor, int* micro) const
             case wxDirect2D::wxD2D_VERSION_1_1:
                 *minor = 1;
                 break;
+            case wxDirect2D::wxD2D_VERSION_NONE:
+                // This is not supposed to happen, but we handle this value in
+                // the switch to ensure that we'll get warnings if any new
+                // values, not handled here, are added to the enum later.
+                *minor = -1;
+                break;
             }
         }
 
@@ -3729,7 +3855,10 @@ public:
 
     virtual bool OnInit() wxOVERRIDE
     {
-        return true;
+        HRESULT hr = ::CoInitializeEx(NULL, COINIT_APARTMENTTHREADED);
+        // RPC_E_CHANGED_MODE is not considered as an error
+        // - see remarks for wxOleInitialize().
+        return SUCCEEDED(hr) || hr == RPC_E_CHANGED_MODE;
     }
 
     virtual void OnExit() wxOVERRIDE
@@ -3751,6 +3880,8 @@ public:
             delete gs_D2DRenderer;
             gs_D2DRenderer = NULL;
         }
+
+        ::CoUninitialize();
     }
 
 private:

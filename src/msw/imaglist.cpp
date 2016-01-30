@@ -70,11 +70,13 @@ static HBITMAP GetMaskForImage(const wxBitmap& bitmap, const wxBitmap& mask);
 wxImageList::wxImageList()
 {
     m_hImageList = 0;
+    m_size = wxSize(0,0);
 }
 
 // Creates an image list
 bool wxImageList::Create(int width, int height, bool mask, int initial)
 {
+    m_size = wxSize(width, height);
     UINT flags = 0;
 
     // as we want to be able to use 32bpp bitmaps in the image lists, we always
@@ -82,11 +84,7 @@ bool wxImageList::Create(int width, int height, bool mask, int initial)
     // will make the best effort to show the bitmap if we do this resulting in
     // quite acceptable display while using a lower depth ILC_COLOR constant
     // (e.g. ILC_COLOR16) shows completely broken bitmaps
-#ifdef __WXWINCE__
-    flags |= ILC_COLOR;
-#else
     flags |= ILC_COLOR32;
-#endif
 
     // For comctl32.dll < 6 always use masks as it doesn't support alpha.
     if ( mask || wxApp::GetComCtl32Version() < 600 )

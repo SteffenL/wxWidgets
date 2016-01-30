@@ -232,6 +232,10 @@ long wxOSXTranslateCocoaKey( NSEvent* event, int eventType )
             {
                 switch ( [s characterAtIndex:0] )
                 {
+                    // numpad enter key End-of-text character ETX U+0003
+                    case 3:
+                        retval = WXK_NUMPAD_ENTER;
+                        break;
                     // backspace key
                     case 0x7F :
                     case 8 :
@@ -344,9 +348,6 @@ long wxOSXTranslateCocoaKey( NSEvent* event, int eventType )
                 break;
             case 69: // +
                 retval = WXK_NUMPAD_ADD;
-                break;
-            case 76: // Enter
-                retval = WXK_NUMPAD_ENTER;
                 break;
             case 65: // .
                 retval = WXK_NUMPAD_DECIMAL;
@@ -682,39 +683,15 @@ void wxWidgetCocoaImpl::SetupMouseEvent( wxMouseEvent &wxevent , NSEvent * nsEve
 
             wxevent.SetEventType( wxEVT_MOUSEWHEEL ) ;
 
-            if ( UMAGetSystemVersion() >= 0x1070 )
+            if ( [nsEvent hasPreciseScrollingDeltas] )
             {
-                if ( [nsEvent hasPreciseScrollingDeltas] )
-                {
-                    deltaX = [nsEvent scrollingDeltaX];
-                    deltaY = [nsEvent scrollingDeltaY];
-                }
-                else
-                {
-                    deltaX = [nsEvent scrollingDeltaX] * 10;
-                    deltaY = [nsEvent scrollingDeltaY] * 10;
-                }
+                deltaX = [nsEvent scrollingDeltaX];
+                deltaY = [nsEvent scrollingDeltaY];
             }
             else
             {
-                const EventRef cEvent = (EventRef) [nsEvent eventRef];
-                // see http://developer.apple.com/qa/qa2005/qa1453.html
-                // for more details on why we have to look for the exact type
-                
-                bool isMouseScrollEvent = false;
-                if ( cEvent )
-                    isMouseScrollEvent = ::GetEventKind(cEvent) == kEventMouseScroll;
-                
-                if ( isMouseScrollEvent )
-                {
-                    deltaX = [nsEvent deviceDeltaX];
-                    deltaY = [nsEvent deviceDeltaY];
-                }
-                else
-                {
-                    deltaX = ([nsEvent deltaX] * 10);
-                    deltaY = ([nsEvent deltaY] * 10);
-                }
+                deltaX = [nsEvent scrollingDeltaX] * 10;
+                deltaY = [nsEvent scrollingDeltaY] * 10;
             }
             
             wxevent.m_wheelDelta = 10;
@@ -1778,9 +1755,7 @@ void wxOSXCocoaClassAddWXMethods(Class c)
     wxOSX_CLASS_ADD_METHOD(c, @selector(mouseEntered:), (IMP) wxOSX_mouseEvent, "v@:@" )
     wxOSX_CLASS_ADD_METHOD(c, @selector(mouseExited:), (IMP) wxOSX_mouseEvent, "v@:@" )
         
-#if MAC_OS_X_VERSION_MAX_ALLOWED >= MAC_OS_X_VERSION_10_5
     wxOSX_CLASS_ADD_METHOD(c, @selector(magnifyWithEvent:), (IMP)wxOSX_mouseEvent, "v@:@")
-#endif
 
     wxOSX_CLASS_ADD_METHOD(c, @selector(cursorUpdate:), (IMP) wxOSX_cursorUpdate, "v@:@" )
 
@@ -1893,13 +1868,8 @@ void wxWidgetCocoaImpl::SetVisibility( bool visible )
 
 double wxWidgetCocoaImpl::GetContentScaleFactor() const
 {
-#if MAC_OS_X_VERSION_MAX_ALLOWED >= MAC_OS_X_VERSION_10_7
     NSWindow* tlw = [m_osxView window];
-    if ( [ tlw respondsToSelector:@selector(backingScaleFactor) ] )
-        return [tlw backingScaleFactor];
-    else
-#endif
-        return 1.0;
+    return [tlw backingScaleFactor];
 }
 
 // ----------------------------------------------------------------------------
@@ -1907,7 +1877,7 @@ double wxWidgetCocoaImpl::GetContentScaleFactor() const
 // ----------------------------------------------------------------------------
 
 // define a delegate used to refresh the window during animation
-@interface wxNSAnimationDelegate : NSObject wxOSX_10_6_AND_LATER(<NSAnimationDelegate>)
+@interface wxNSAnimationDelegate : NSObject <NSAnimationDelegate>
 {
     wxWindow *m_win;
     bool m_isDone;
@@ -2432,10 +2402,7 @@ void wxWidgetCocoaImpl::SetBackgroundColour( const wxColour &col )
 
     if ( [targetView respondsToSelector:@selector(setBackgroundColor:) ] )
     {
-        [targetView setBackgroundColor:[NSColor colorWithCalibratedRed:(CGFloat) (col.Red() / 255.0)
-                                                                green:(CGFloat) (col.Green() / 255.0)
-                                                                 blue:(CGFloat) (col.Blue() / 255.0)
-                                                                alpha:(CGFloat) (col.Alpha() / 255.0)]];
+        [targetView setBackgroundColor: col.OSXGetNSColor()];
     }
 }
 
@@ -2698,10 +2665,7 @@ void wxWidgetCocoaImpl::SetFont(wxFont const& font, wxColour const&col, long, bo
     if ([targetView respondsToSelector:@selector(setFont:)])
         [targetView setFont: font.OSXGetNSFont()];
     if ([targetView respondsToSelector:@selector(setTextColor:)])
-        [targetView setTextColor:[NSColor colorWithCalibratedRed:(CGFloat) (col.Red() / 255.0)
-                                                                 green:(CGFloat) (col.Green() / 255.0)
-                                                                  blue:(CGFloat) (col.Blue() / 255.0)
-                                                                 alpha:(CGFloat) (col.Alpha() / 255.0)]];
+        [targetView setTextColor: col.OSXGetNSColor()];
 }
 
 void wxWidgetCocoaImpl::SetToolTip(wxToolTip* tooltip)

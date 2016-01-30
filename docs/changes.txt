@@ -33,10 +33,15 @@ Changes in behaviour which may result in build errors
 - "webview" library is not included in `wx-config --libs` output any more, you
   need to request it explicitly, e.g. `wx-config --libs std,webview`.
 
+- wxMSW now requires linking with shlwapi.lib and version.lib. This is done
+  automatically in most cases, but if you use a static build of the library
+  with a non-MSVC compiler such as MinGW and do not use wx-config, then you
+  will need to add these libraries to your make or project files yourself.
+
 - WXWIN_OS_DESCRIPTION doesn't exist any longer, use wxGetOsDescription().
 
 
-3.1.0: (released 2015-xx-xx)
+3.1.0: (released 2016-xx-xx)
 ----------------------------
 
 - Many improvements for high DPI monitors support, notably XRC now interprets
@@ -45,8 +50,12 @@ Changes in behaviour which may result in build errors
 - wxQt branch implementing Qt5-based port of wxWidgets API was merged into
   the trunk (Mariano Reingart, Google Summer of Code project).
 
+- Added wxNativeWindow allowing to embed native widgets in wxWidgets programs.
+
 All:
 
+- Add UTF-8 and ZIP 64 support to wxZip{Input,Output}Stream (Tobias Taschner).
+- Add wxStandardPaths::GetUserDir() (Tobias Taschner).
 - Allow calling wxItemContainer::Add() and similar with std::vector<> argument.
 - Add "%z" support to printf()-like functions like wxString::Format() (RIVDSL).
 - Add DOCTYPE support to wxXmlDocument (Nick Matthews).
@@ -66,31 +75,42 @@ All:
 - Add wxART_FULL_SCREEN standard bitmap (Igor Korot).
 - Fix wxStringTokenizer copy ctor and assignment operator.
 - Added wxASSERT_MSG_AT() and wxFAIL_MSG_AT() macros.
+- Accept replacement character in wxString::ToAscii() (Stefano D. Mtangoo).
 
 Unix:
 
 - Fix bug in wxExecute() if child exited too quickly (Kevin B. McCarty).
 - Add --disable-sys-libs configure option.
+- Add --enable-cxx11 configure option.
 
 All (GUI):
 
 - Allow requesting modern (3.x+) OpenGL version in wxGLCanvas (Fabio Arnold).
 - Add wxActivityIndicator.
 - Add wxWindow::FromDIP() for simpler high DPI support.
+- Allow initially hiding sizer items in XRC (Bogdan Iordanescu).
 - Allow customizing window shown by wxBusyInfo.
 - Add wxAddRemoveCtrl.
 - Add wxAppProgressIndicator for MSW (Chaobin Zhang) and OS X (Tobias Taschner).
+- Add wxTextEntry::ForceUpper().
+- Add wxTextEntryDialog::ForceUpper().
 - Add wxEVT_MAGNIFY mouse event (Joost Nieuwenhuijse).
 - Add wxProcess::Activate().
+- Fix setting colours of labels in wxSlider.
+- Fix setting background colour of wxRadioBox buttons.
+- Add wxTopLevelWindow::Enable{Maximize,Minimize}Button() (John Roberts).
 - Make results of wxDC::DrawEllipticArc() consistent across all platforms.
 - XRC handler for wxAuiToolBar added (Kinaou Hervé, David Hart).
 - Improve wxLIST_AUTOSIZE_XXX support in generic wxListCtrl (Kinaou Hervé).
+- Support "color", "size" and "font" CSS for fonts in wxHTML (Kinaou Hervé).
+- Fix one pixel gaps between consecutive underlined words in wxHTML.
 - Add wxCursor::GetHotSpot().
 - Add wxFD_NO_FOLLOW style for wxFileDialog (Luca Bacci).
 - Add support for embedding bitmaps in generated SVG in wxSVGFileDC (iwbnwif).
 - Add support for sorting wxDataViewCtrl by multiple columns (Trigve).
 - Allow dropping data on wxDataViewCtrl background (Laurent Poujoulat).
 - Add wxRendererNative::DrawGauge() (Tobias Taschner).
+- Add wxRendererNative::DrawItemText() (Tobias Taschner).
 - Add wxHtmlWindow::SetDefaultHTMLCursor() (Jeff A. Marr).
 - Add default ctor and Create() to wxContextHelpButton (Hanmac).
 - Send events when toggling wxPropertyGrid nodes from keyboard (Armel Asselin).
@@ -119,6 +139,8 @@ All (GUI):
 - Show how to handle files on command line in docview sample (Neil Mayhew).
 - Improve wxFileCtrl::SetFilename() and SetPath() (Kevin B. McCarty).
 - Fix a crash when using animated GIFs in wxHtmlListBox.
+- Use platform-specific stock icons for wxEditableListBox buttons.
+- Add support for the events from multimedia keys (Jens Göpfert).
 
 wxGTK:
 
@@ -131,8 +153,11 @@ wxGTK:
 wxMSW:
 
 - Make default wxSizer border DPI-aware.
+- Implement native tab art for wxAUI (Tobias Taschner).
 - Improve wxMimeTypesManager open command detection (Eric Jensen).
 - Make wxFILTER_INCLUDE_LIST in wxTextValidator actually usable.
+- Fix handling crashes in wxEVT_PAINT event handlers.
+- Fix wxStackWalker to work with Unicode identifiers (Suzumizaki-kimitaka).
 - Fix appearance of toggled wxToggleButtons with bitmap (tm).
 - Fix setting menu item bitmaps after appending them (Artur Wieczorek).
 - Fix setting label of submenu items (Artur Wieczorek).
@@ -158,12 +183,24 @@ wxMSW:
 - Don't send events for already selected radio popup menu items (Kinaou Hervé).
 - wxListCtrl::GetItemCount() in wxEVT_LIST_INSERT_ITEM is no longer off by 1.
 - Don't send bogus root selection events when clicking wxTreeCtrl (sbrowne).
+- Avoid bogus assert after calling wxDatePickerCtrl::SetRange().
+- Add solution file for building with MSVS 2014 (Peter Tissen).
+- Correct wxGetOsDescription() for Windows 10 (Tobias Taschner).
+- Make wxListCtrl &c appearance more native on modern systems (Tobias Taschner).
+- Don't send wxActivateEvent for minimized windows (bzcdr).
+- Return correct OS version under Windows 8.1 and later.
 
 wxOSX/Cocoa:
 
 - Use more efficient FSEvents (10.7+) in wxFileSystemWatcher (Roberto Perpuly).
 - Implement wxWindow::Disable() for non-native controls too (Steve Browne).
+- Implement wxTopLevelWindow::EnableCloseButton() (John Roberts).
 - Fix wxEVT_CHAR for non-BMP Unicode characters (ARATA Mizuki).
 - Add support for wxEVT_COMBOBOX_DROPDOWN and wxEVT_COMBOBOX_CLOSEUP
   events (Igor Korot).
 - Implement strike-through support in wxFont (Igor Korot).
+- Provide native implementation of wxStandardPaths (Tobias Taschner).
+- Add wxTE_{RIGHT,CENTER} support for multiline wxTextCtrl (Andreas Falkenhahn).
+- Don't leave wxSlider labels shown when the slider itself is hidden.
+- Don't generate wxEVT_TEXT_ENTER for controls without wxTE_PROCESS_ENTER.
+- Implement wxToolTip::SetDelay() (David Vanderson).

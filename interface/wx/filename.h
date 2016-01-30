@@ -773,7 +773,8 @@ public:
     static wxULongLong GetSize(const wxString& filename);
 
     /**
-        Returns the directory used for temporary files.
+        Returns the directory used for temporary files, for current user. Same as
+        wxStandardPaths::GetTempDir().
     */
     static wxString GetTempDir();
 
@@ -813,8 +814,7 @@ public:
      /**
         This function builds a volume path string, for example "C:\\".
 
-        Implemented for the platforms which use drive letters, i.e. DOS, MSW
-        and OS/2 only.
+        Implemented for the platforms which use drive letters, i.e. MSW only.
 
         @since 2.9.0
 

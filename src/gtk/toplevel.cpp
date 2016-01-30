@@ -27,7 +27,6 @@
     #include "wx/frame.h"
     #include "wx/icon.h"
     #include "wx/log.h"
-    #include "wx/app.h"
 #endif
 
 #include "wx/evtloop.h"
@@ -47,15 +46,6 @@
 #include "wx/gtk/private/gtk2-compat.h"
 #include "wx/gtk/private/win_gtk.h"
 
-#if wxUSE_LIBHILDON
-    #include <hildon-widgets/hildon-program.h>
-    #include <hildon-widgets/hildon-window.h>
-#endif // wxUSE_LIBHILDON
-
-#if wxUSE_LIBHILDON2
-    #include <hildon/hildon.h>
-#endif // wxUSE_LIBHILDON2
-
 // ----------------------------------------------------------------------------
 // data
 // ----------------------------------------------------------------------------
@@ -66,13 +56,6 @@ int wxOpenModalDialogsCount = 0;
 // the frame that is currently active (i.e. its child has focus). It is
 // used to generate wxActivateEvents
 static wxTopLevelWindowGTK *g_activeFrame = NULL;
-static wxTopLevelWindowGTK *g_lastActiveFrame = NULL;
-
-// if we detect that the app has got/lost the focus, we set this variable to
-// either TRUE or FALSE and an activate event will be sent during the next
-// OnIdle() call and it is reset to -1: this value means that we shouldn't
-// send any activate events at all
-static int g_sendActivateEvent = -1;
 
 extern wxCursor g_globalCursor;
 extern wxCursor g_busyCursor;
@@ -143,24 +126,7 @@ static gboolean gtk_frame_focus_in_callback( GtkWidget *widget,
                                          GdkEvent *WXUNUSED(event),
                                          wxTopLevelWindowGTK *win )
 {
-    switch ( g_sendActivateEvent )
-    {
-        case -1:
-            // we've got focus from outside, synthetize wxActivateEvent
-            g_sendActivateEvent = 1;
-            break;
-
-        case 0:
-            // another our window just lost focus, it was already ours before
-            // - don't send any wxActivateEvent
-            g_sendActivateEvent = -1;
-            break;
-    }
-
     g_activeFrame = win;
-    g_lastActiveFrame = g_activeFrame;
-
-    // wxPrintf( wxT("active: %s\n"), win->GetTitle().c_str() );
 
     // MR: wxRequestUserAttention related block
     switch( win->m_urgency_hint )
@@ -176,7 +142,6 @@ static gboolean gtk_frame_focus_in_callback( GtkWidget *widget,
         case -2: break;
     }
 
-    wxLogTrace(wxT("activate"), wxT("Activating frame %p (from focus_in)"), g_activeFrame);
     wxActivateEvent event(wxEVT_ACTIVATE, true, g_activeFrame->GetId());
     event.SetEventObject(g_activeFrame);
     g_activeFrame->HandleWindowEvent(event);
@@ -195,18 +160,8 @@ gboolean gtk_frame_focus_out_callback(GtkWidget * WXUNUSED(widget),
                                       GdkEventFocus *WXUNUSED(gdk_event),
                                       wxTopLevelWindowGTK * WXUNUSED(win))
 {
-    // if the focus goes out of our app altogether, OnIdle() will send
-    // wxActivateEvent, otherwise gtk_window_focus_in_callback() will reset
-    // g_sendActivateEvent to -1
-    g_sendActivateEvent = 0;
-
-    // wxASSERT_MSG( (g_activeFrame == win), wxT("TLW deactivatd although it wasn't active") );
-
-    // wxPrintf( wxT("inactive: %s\n"), win->GetTitle().c_str() );
-
     if (g_activeFrame)
     {
-        wxLogTrace(wxT("activate"), wxT("Activating frame %p (from focus_in)"), g_activeFrame);
         wxActivateEvent event(wxEVT_ACTIVATE, false, g_activeFrame->GetId());
         event.SetEventObject(g_activeFrame);
         g_activeFrame->HandleWindowEvent(event);
@@ -585,14 +540,6 @@ bool wxTopLevelWindowGTK::Create( wxWindow *parent,
     //     e.g. in wxTaskBarIconAreaGTK
     if (m_widget == NULL)
     {
-#if wxUSE_LIBHILDON || wxUSE_LIBHILDON2
-        // we must create HildonWindow and not a normal GtkWindow as the latter
-        // doesn't look correctly in Maemo environment and it must also be
-        // registered with the main program object
-        m_widget = hildon_window_new();
-        hildon_program_add_window(wxTheApp->GetHildonProgram(),
-                                  HILDON_WINDOW(m_widget));
-#else // !wxUSE_LIBHILDON || !wxUSE_LIBHILDON2
         m_widget = gtk_window_new(GTK_WINDOW_TOPLEVEL);
         if (GetExtraStyle() & wxTOPLEVEL_EX_DIALOG)
         {
@@ -619,7 +566,6 @@ bool wxTopLevelWindowGTK::Create( wxWindow *parent,
                 style |= wxFRAME_NO_TASKBAR;
             }
         }
-#endif // wxUSE_LIBHILDON || wxUSE_LIBHILDON2/!wxUSE_LIBHILDON || !wxUSE_LIBHILDON2
 
         g_object_ref(m_widget);
     }
@@ -802,15 +748,6 @@ wxTopLevelWindowGTK::~wxTopLevelWindowGTK()
         g_source_remove(m_netFrameExtentsTimerId);
     }
 
-#if wxUSE_LIBHILDON || wxUSE_LIBHILDON2
-    // it can also be a (standard) dialog
-    if ( HILDON_IS_WINDOW(m_widget) )
-    {
-        hildon_program_remove_window(wxTheApp->GetHildonProgram(),
-                                     HILDON_WINDOW(m_widget));
-    }
-#endif // wxUSE_LIBHILDON || wxUSE_LIBHILDON2
-
     if (m_grabbed)
     {
         wxFAIL_MSG(wxT("Window still grabbed"));
@@ -827,8 +764,6 @@ wxTopLevelWindowGTK::~wxTopLevelWindowGTK()
 
     if (g_activeFrame == this)
         g_activeFrame = NULL;
-    if (g_lastActiveFrame == this)
-        g_lastActiveFrame = NULL;
 }
 
 bool wxTopLevelWindowGTK::EnableCloseButton( bool enable )
@@ -853,7 +788,8 @@ bool wxTopLevelWindowGTK::ShowFullScreen(bool show, long)
     m_fsIsShowing = show;
 
 #ifdef GDK_WINDOWING_X11
-    GdkDisplay *display = gtk_widget_get_display(m_widget);
+    GdkScreen* screen = gtk_widget_get_screen(m_widget);
+    GdkDisplay* display = gdk_screen_get_display(screen);
     Display* xdpy = NULL;
     Window xroot = None;
     wxX11FullScreenMethod method = wxX11_FS_WMSPEC;
@@ -861,7 +797,7 @@ bool wxTopLevelWindowGTK::ShowFullScreen(bool show, long)
     if (GDK_IS_X11_DISPLAY(display))
     {
         xdpy = GDK_DISPLAY_XDISPLAY(display);
-        xroot = GDK_WINDOW_XID(gtk_widget_get_root_window(m_widget));
+        xroot = GDK_WINDOW_XID(gdk_screen_get_root_window(screen));
         method = wxGetFullScreenMethodX11(xdpy, (WXWindow)xroot);
     }
 
@@ -888,7 +824,6 @@ bool wxTopLevelWindowGTK::ShowFullScreen(bool show, long)
             GetPosition( &m_fsSaveFrame.x, &m_fsSaveFrame.y );
             GetSize( &m_fsSaveFrame.width, &m_fsSaveFrame.height );
 
-            GdkScreen* screen = gtk_widget_get_screen(m_widget);
             const int screen_width = gdk_screen_get_width(screen);
             const int screen_height = gdk_screen_get_height(screen);
 
@@ -1100,25 +1035,8 @@ void wxTopLevelWindowGTK::GTKDoGetSize(int *width, int *height) const
     size.y -= m_decorSize.top + m_decorSize.bottom;
     if (size.x < 0) size.x = 0;
     if (size.y < 0) size.y = 0;
-#if wxUSE_LIBHILDON2
-    if (width) {
-       if (size.x == 720)
-               *width = 696;
-       else
-               *width = size.x;
-    }
-    if (height) {
-       if (size.y == 420)
-               *height = 396;
-       else if (size.y == 270)
-               *height = 246;
-            else
-               *height = size.y;
-    }
-#else // wxUSE_LIBHILDON2
     if (width)  *width  = size.x;
     if (height) *height = size.y;
-#endif // wxUSE_LIBHILDON2 /!wxUSE_LIBHILDON2
 }
 
 void wxTopLevelWindowGTK::DoSetSize( int x, int y, int width, int height, int sizeFlags )
@@ -1344,25 +1262,6 @@ wxTopLevelWindowGTK::DecorSize& wxTopLevelWindowGTK::GetCachedDecorSize()
     if (m_windowStyle & wxFRAME_TOOL_WINDOW)
         index |= 4;
     return size[index];
-}
-
-void wxTopLevelWindowGTK::OnInternalIdle()
-{
-    wxTopLevelWindowBase::OnInternalIdle();
-
-    // Synthetize activate events.
-    if ( g_sendActivateEvent != -1 )
-    {
-        bool activate = g_sendActivateEvent != 0;
-
-        // if (!activate) wxPrintf( wxT("de") );
-        // wxPrintf( wxT("activate\n") );
-
-        // do it only once
-        g_sendActivateEvent = -1;
-
-        wxTheApp->SetActive(activate, (wxWindow *)g_lastActiveFrame);
-    }
 }
 
 // ----------------------------------------------------------------------------

@@ -979,6 +979,21 @@ public:
     wxPoint FromDIP(const wxPoint& pt) const { return FromDIP(pt, this); }
     int FromDIP(int d) const { return FromDIP(d, this); }
 
+    static wxSize ToDIP(const wxSize& sz, const wxWindowBase* w);
+    static wxPoint ToDIP(const wxPoint& pt, const wxWindowBase* w)
+    {
+        const wxSize sz = ToDIP(wxSize(pt.x, pt.y), w);
+        return wxPoint(sz.x, sz.y);
+    }
+    static int ToDIP(int d, const wxWindowBase* w)
+    {
+        return ToDIP(wxSize(d, 0), w).x;
+    }
+
+    wxSize ToDIP(const wxSize& sz) const { return ToDIP(sz, this); }
+    wxPoint ToDIP(const wxPoint& pt) const { return ToDIP(pt, this); }
+    int ToDIP(int d) const { return ToDIP(d, this); }
+
 
         // Dialog units are based on the size of the current font.
 
@@ -1360,7 +1375,7 @@ public:
     bool CopyToolTip(wxToolTip *tip);
 #else // !wxUSE_TOOLTIPS
         // make it much easier to compile apps in an environment
-        // that doesn't support tooltips, such as PocketPC
+        // that doesn't support tooltips
     void SetToolTip(const wxString & WXUNUSED(tip)) { }
     void UnsetToolTip() { }
 #endif // wxUSE_TOOLTIPS/!wxUSE_TOOLTIPS
@@ -1979,10 +1994,19 @@ inline wxWindow *wxWindowBase::GetGrandParent() const
 
 #ifdef wxHAVE_DPI_INDEPENDENT_PIXELS
 
-// FromDIP() becomes trivial in this case, so make it inline to avoid overhead.
+// FromDIP() and ToDIP() become trivial in this case, so make them inline to
+// avoid any overhead.
+
 /* static */
 inline wxSize
 wxWindowBase::FromDIP(const wxSize& sz, const wxWindowBase* WXUNUSED(w))
+{
+    return sz;
+}
+
+/* static */
+inline wxSize
+wxWindowBase::ToDIP(const wxSize& sz, const wxWindowBase* WXUNUSED(w))
 {
     return sz;
 }

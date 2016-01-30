@@ -1906,8 +1906,8 @@ wxWindow* wxPropertyGrid::GenerateEditorTextCtrl( const wxPoint& pos,
     if ( prop->HasFlag(wxPG_PROP_READONLY) && forColumn == 1 )
         tcFlags |= wxTE_READONLY;
 
-    wxPoint p(pos.x,pos.y);
-    wxSize s(sz.x,sz.y);
+    wxPoint p(pos);
+    wxSize s(sz);
 
    // Need to reduce width of text control on Mac
 #if defined(__WXMAC__)
@@ -1926,10 +1926,7 @@ wxWindow* wxPropertyGrid::GenerateEditorTextCtrl( const wxPoint& pos,
     }
 
     // If the height is significantly higher, then use border, and fill the rect exactly.
-    bool hasSpecialSize = false;
-
-    if ( (sz.y - m_lineHeight) > 5 )
-        hasSpecialSize = true;
+    const bool hasSpecialSize = (sz.y - m_lineHeight) > 5;
 
     wxWindow* ctrlParent = GetPanel();
 
@@ -2009,7 +2006,7 @@ wxWindow* wxPropertyGrid::GenerateEditorButton( const wxPoint& pos, const wxSize
 
    wxPoint p(pos.x+sz.x,
              pos.y+wxPG_BUTTON_SIZEDEC-wxPG_NAT_BUTTON_BORDER_Y);
-   wxSize s(25, -1);
+   wxSize s(25, wxDefaultCoord);
 
    wxButton* but = new wxButton();
    but->Create(GetPanel(),wxID_ANY,wxS("..."),p,s,wxWANTS_CHARS);
