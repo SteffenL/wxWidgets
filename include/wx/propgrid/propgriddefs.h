@@ -235,7 +235,9 @@ class wxPGValidationInfo;
 
 // This is the value placed in wxPGProperty::sm_wxPG_LABEL
 #define wxPG_LABEL_STRING       wxS("@!")
+#if WXWIN_COMPATIBILITY_3_0
 #define wxPG_NULL_BITMAP        wxNullBitmap
+#endif // WXWIN_COMPATIBILITY_3_0
 #define wxPG_COLOUR_BLACK       (*wxBLACK)
 
 /** Convert Red, Green and Blue to a single 32-bit value.
@@ -246,7 +248,7 @@ class wxPGValidationInfo;
 /** If property is supposed to have custom-painted image, then returning
     this in OnMeasureImage() will usually be enough.
 */
-#define wxPG_DEFAULT_IMAGE_SIZE             wxSize(-1, -1)
+#define wxPG_DEFAULT_IMAGE_SIZE  wxDefaultSize
 
 
 /** This callback function is used for sorting properties.
@@ -318,19 +320,6 @@ WX_DECLARE_HASH_SET_WITH_DECL(int,
 WX_DEFINE_TYPEARRAY_WITH_DECL_PTR(wxObject*, wxArrayPGObject,
                                   wxBaseArrayPtrVoid,
                                   class WXDLLIMPEXP_PROPGRID);
-
-// Utility to find if specific item is in a vector. Returns index to
-// the item, or wxNOT_FOUND if not present.
-template<typename CONTAINER, typename T>
-int wxPGFindInVector( CONTAINER vector, const T& item )
-{
-    for ( unsigned int i=0; i<vector.size(); i++ )
-    {
-        if ( vector[i] == item )
-            return (int) i;
-    }
-    return wxNOT_FOUND;
-}
 
 // -----------------------------------------------------------------------
 
@@ -532,11 +521,11 @@ public:\
 \
     const classname &GetValue() const { return m_value; } \
 \
-    virtual bool Eq(wxVariantData& data) const; \
+    virtual bool Eq(wxVariantData& data) const wxOVERRIDE; \
 \
-    virtual wxString GetType() const; \
+    virtual wxString GetType() const wxOVERRIDE; \
 \
-    virtual wxVariantData* Clone() const { return new classname##VariantData(m_value); } \
+    virtual wxVariantData* Clone() const wxOVERRIDE { return new classname##VariantData(m_value); } \
 \
     DECLARE_WXANY_CONVERSION() \
 protected:\

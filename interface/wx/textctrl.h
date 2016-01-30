@@ -960,11 +960,10 @@ public:
     @style{wxTE_READONLY}
            The text will not be user-editable.
     @style{wxTE_RICH}
-           Use rich text control under Win32, this allows to have more than
-           64KB of text in the control even under Win9x. This style is ignored
-           under other platforms.
+           Use rich text control under MSW, this allows to have more than 64KB
+           of text in the control. This style is ignored under other platforms.
     @style{wxTE_RICH2}
-           Use rich text control version 2.0 or 3.0 under Win32, this style is
+           Use rich text control version 2.0 or higher under MSW, this style is
            ignored under other platforms
     @style{wxTE_AUTO_URL}
            Highlight the URLs and generate the wxTextUrlEvents when mouse
@@ -1091,9 +1090,9 @@ public:
     *control << 123.456 << " some text\n";
     @endcode
 
-    However the possibility to create an ostream associated with wxTextCtrl may
-    be useful if you need to redirect the output of a function taking an
-    ostream as parameter to a text control.
+    However the possibility to create a @c std::ostream associated with wxTextCtrl may
+    be useful if you need to redirect the output of a function taking a
+    @c std::ostream as parameter to a text control.
 
     Another commonly requested need is to redirect @c std::cout to the text
     control. This may be done in the following way:

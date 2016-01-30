@@ -130,14 +130,20 @@ bool wxTextEntryDialog::Create(wxWindow *parent,
 
 bool wxTextEntryDialog::TransferDataToWindow()
 {
-    m_textctrl->SetValue(m_value);
+    if ( m_textctrl )
+    {
+        m_textctrl->SetValue(m_value);
+    }
 
     return wxDialog::TransferDataToWindow();
 }
 
 bool wxTextEntryDialog::TransferDataFromWindow()
 {
-    m_value = m_textctrl->GetValue();
+    if ( m_textctrl )
+    {
+        m_value = m_textctrl->GetValue();
+    }
 
     return wxDialog::TransferDataFromWindow();
 }
@@ -152,14 +158,28 @@ void wxTextEntryDialog::OnOK(wxCommandEvent& WXUNUSED(event) )
 
 void wxTextEntryDialog::SetMaxLength(unsigned long len)
 {
-    m_textctrl->SetMaxLength(len);
+    if ( m_textctrl )
+    {
+        m_textctrl->SetMaxLength(len);
+    }
 }
 
 void wxTextEntryDialog::SetValue(const wxString& val)
 {
     m_value = val;
 
-    m_textctrl->SetValue(val);
+    if ( m_textctrl )
+    {
+        m_textctrl->SetValue(val);
+    }
+}
+
+void wxTextEntryDialog::ForceUpper()
+{
+    if ( m_textctrl )
+    {
+        m_textctrl->ForceUpper();
+    }
 }
 
 #if wxUSE_VALIDATORS
@@ -178,7 +198,10 @@ void wxTextEntryDialog::SetTextValidator( wxTextValidatorStyle style )
 
 void wxTextEntryDialog::SetTextValidator( const wxTextValidator& validator )
 {
-    m_textctrl->SetValidator( validator );
+    if ( m_textctrl )
+    {
+        m_textctrl->SetValidator( validator );
+    }
 }
 
 #endif // wxUSE_VALIDATORS

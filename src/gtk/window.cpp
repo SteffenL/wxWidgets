@@ -726,6 +726,57 @@ static long wxTranslateKeySymToWXKey(KeySym keysym, bool isChar)
         case GDK_F12:
             key_code = WXK_F1 + keysym - GDK_F1;
             break;
+        case GDK_Back:
+            key_code = WXK_BROWSER_BACK;
+            break;
+        case GDK_Forward:
+            key_code = WXK_BROWSER_FORWARD;
+            break;
+        case GDK_Refresh:
+            key_code = WXK_BROWSER_REFRESH;
+            break;
+        case GDK_Stop:
+            key_code = WXK_BROWSER_STOP;
+            break;
+        case GDK_Search:
+            key_code = WXK_BROWSER_SEARCH;
+            break;
+        case GDK_Favorites:
+            key_code = WXK_BROWSER_FAVORITES;
+            break;
+        case GDK_HomePage:
+            key_code = WXK_BROWSER_HOME;
+            break;
+        case GDK_AudioMute:
+            key_code = WXK_VOLUME_MUTE;
+            break;
+        case GDK_AudioLowerVolume:
+            key_code = WXK_VOLUME_DOWN;
+            break;
+        case GDK_AudioRaiseVolume:
+            key_code = WXK_VOLUME_UP;
+            break;
+        case GDK_AudioNext:
+            key_code = WXK_MEDIA_NEXT_TRACK;
+            break;
+        case GDK_AudioPrev:
+            key_code = WXK_MEDIA_PREV_TRACK;
+            break;
+        case GDK_AudioStop:
+            key_code = WXK_MEDIA_STOP;
+            break;
+        case GDK_AudioPlay:
+            key_code = WXK_MEDIA_PLAY_PAUSE;
+            break;
+        case GDK_Mail:
+            key_code = WXK_LAUNCH_MAIL;
+            break;
+        case GDK_LaunchA:
+            key_code = WXK_LAUNCH_APP1;
+            break;
+        case GDK_LaunchB:
+            key_code = WXK_LAUNCH_APP2;
+            break;
 
         default:
             key_code = 0;
@@ -1724,7 +1775,7 @@ gtk_window_motion_notify_callback( GtkWidget * WXUNUSED(widget),
 
 static void AdjustRangeValue(GtkRange* range, double step)
 {
-    if (range && gtk_widget_get_visible(GTK_WIDGET(range)))
+    if (gtk_widget_get_visible(GTK_WIDGET(range)))
     {
         GtkAdjustment* adj = gtk_range_get_adjustment(range);
         double value = gtk_adjustment_get_value(adj);
@@ -1788,21 +1839,30 @@ scroll_event(GtkWidget* widget, GdkEventScroll* gdk_event, wxWindow* win)
                     delta_x = 0;
                 }
             }
+            bool handled = false;
             if (delta_x)
             {
                 event.m_wheelAxis = wxMOUSE_WHEEL_HORIZONTAL;
                 event.m_wheelRotation = int(event.m_wheelDelta * delta_x);
-                if (!win->GTKProcessEvent(event))
+                handled = win->GTKProcessEvent(event);
+                if (!handled && range_h)
+                {
                     AdjustRangeValue(range_h, event.m_columnsPerAction * delta_x);
+                    handled = true;
+                }
             }
             if (delta_y)
             {
                 event.m_wheelAxis = wxMOUSE_WHEEL_VERTICAL;
                 event.m_wheelRotation = int(event.m_wheelDelta * -delta_y);
-                if (!win->GTKProcessEvent(event))
+                handled = win->GTKProcessEvent(event);
+                if (!handled && range_v)
+                {
                     AdjustRangeValue(range_v, event.m_linesPerAction * delta_y);
+                    handled = true;
+                }
             }
-            return true;
+            return handled;
 #endif // GTK_CHECK_VERSION(3,4,0)
     }
     GtkRange *range;
@@ -2742,7 +2802,7 @@ void wxWindowGTK::PostCreation()
 
     // unless the window was created initially hidden (i.e. Hide() had been
     // called before Create()), we should show it at GTK+ level as well
-    if ( IsShown() )
+    if (m_isShown)
         gtk_widget_show( m_widget );
 }
 
@@ -2960,7 +3020,7 @@ void wxWindowGTK::DoSetSize( int x, int y, int width, int height, int sizeFlags 
 
 bool wxWindowGTK::GTKShowFromOnIdle()
 {
-    if (IsShown() && m_showOnIdle && !gtk_widget_get_visible (m_widget))
+    if (m_isShown && m_showOnIdle && !gtk_widget_get_visible(m_widget))
     {
         GtkAllocation alloc;
         alloc.x = m_x;
@@ -3055,6 +3115,9 @@ void wxWindowGTK::DoGetClientSize( int *width, int *height ) const
                 // nor for the ones we have but don't current show
                 switch ( policy[i] )
                 {
+#if GTK_CHECK_VERSION(3,16,0)
+                    case GTK_POLICY_EXTERNAL:
+#endif
                     case GTK_POLICY_NEVER:
                         // never shown so doesn't take any place
                         continue;
@@ -3315,6 +3378,12 @@ bool wxWindowGTK::Show( bool show )
     HandleWindowEvent(eventShow);
 
     return true;
+}
+
+bool wxWindowGTK::IsShown() const
+{
+    // return false for non-selected wxNotebook pages
+    return m_isShown && (m_widget == NULL || gtk_widget_get_child_visible(m_widget));
 }
 
 void wxWindowGTK::DoEnable( bool enable )
@@ -3749,26 +3818,17 @@ void wxWindowGTK::DoMoveInTabOrder(wxWindow *win, WindowOrder move)
 
 bool wxWindowGTK::DoNavigateIn(int flags)
 {
-    if ( flags & wxNavigationKeyEvent::WinChange )
-    {
-        wxFAIL_MSG( wxT("not implemented") );
+    wxWindow *parent = wxGetTopLevelParent((wxWindow *)this);
+    wxCHECK_MSG( parent, false, wxT("every window must have a TLW parent") );
 
-        return false;
-    }
-    else // navigate inside the container
-    {
-        wxWindow *parent = wxGetTopLevelParent((wxWindow *)this);
-        wxCHECK_MSG( parent, false, wxT("every window must have a TLW parent") );
+    GtkDirectionType dir;
+    dir = flags & wxNavigationKeyEvent::IsForward ? GTK_DIR_TAB_FORWARD
+                                                  : GTK_DIR_TAB_BACKWARD;
 
-        GtkDirectionType dir;
-        dir = flags & wxNavigationKeyEvent::IsForward ? GTK_DIR_TAB_FORWARD
-                                                      : GTK_DIR_TAB_BACKWARD;
+    gboolean rc;
+    g_signal_emit_by_name(parent->m_widget, "focus", dir, &rc);
 
-        gboolean rc;
-        g_signal_emit_by_name(parent->m_widget, "focus", dir, &rc);
-
-        return rc != 0;
-    }
+    return rc != 0;
 }
 
 bool wxWindowGTK::GTKWidgetNeedsMnemonic() const
@@ -4440,9 +4500,6 @@ void wxWindowGTK::GTKApplyWidgetStyle(bool forceStyle)
         g_object_unref(style);
 #endif
     }
-
-    // Style change may affect GTK+'s size calculation:
-    InvalidateBestSize();
 }
 
 void wxWindowGTK::DoApplyWidgetStyle(GtkRcStyle *style)
@@ -4750,6 +4807,7 @@ bool wxWindowGTK::SetFont( const wxFont &font )
         // apply style change (forceStyle=true so that new style is applied
         // even if the font changed from valid to wxNullFont):
         GTKApplyWidgetStyle(true);
+        InvalidateBestSize();
     }
 
 #ifdef __WXGTK3__

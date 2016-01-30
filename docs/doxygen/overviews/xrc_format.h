@@ -1900,6 +1900,9 @@ No additional properties.
     Initial value of the control (default: empty).}
 @row3col{maxlength, integer,
     Maximum length of the text which can be entered by user (default: unlimited).}
+@row3col{forceupper, @ref overview_xrcformat_type_bool,
+    If true, use wxTextEntry::ForceUpper() to force the control contents to be
+    upper case.}
 @row3col{hint, @ref overview_xrcformat_type_text,
     Hint shown in empty control (new since wxWidgets 3.0.1).}
 @endTable
@@ -2282,13 +2285,17 @@ Example of sizers XRC code:
 @endcode
 
 The sizer classes that can be used are listed below, together with their
-class-specific properties. All classes support the following properties:
+class-specific properties. All classes except wxStdDialogButtonSizer
+support the following properties:
 
 @beginTable
 @hdr3col{property, type, description}
 @row3col{minsize, @ref overview_xrcformat_type_size,
     Minimal size that this sizer will have, see wxSizer::SetMinSize()
     (default: no min size).}
+@row3col{hideitems, @ref overview_xrcformat_type_bool,
+    Whether the sizer will be created with all its items hidden
+    (default: 0).}
 @endTable
 
 @subsection overview_xrcformat_wxboxsizer wxBoxSizer

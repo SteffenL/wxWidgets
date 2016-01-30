@@ -389,6 +389,9 @@ void wxRichTextCtrl::Init()
     m_enableDelayedImageLoading = false;
     m_delayedImageProcessingRequired = false;
     m_delayedImageProcessingTime = 0;
+
+    // Line height in pixels
+    m_lineHeight = 5;
 }
 
 void wxRichTextCtrl::DoThaw()
@@ -540,7 +543,8 @@ void wxRichTextCtrl::OnSetFocus(wxFocusEvent& WXUNUSED(event))
 #if !wxRICHTEXT_USE_OWN_CARET
         PositionCaret();
 #endif
-        GetCaret()->Show();
+        if (!GetCaret()->IsVisible())
+            GetCaret()->Show();
     }
 
 #if defined(__WXGTK__) && !wxRICHTEXT_USE_OWN_CARET
@@ -554,7 +558,7 @@ void wxRichTextCtrl::OnSetFocus(wxFocusEvent& WXUNUSED(event))
 
 void wxRichTextCtrl::OnKillFocus(wxFocusEvent& WXUNUSED(event))
 {
-    if (GetCaret())
+    if (GetCaret() && GetCaret()->IsVisible())
         GetCaret()->Hide();
 
 #if defined(__WXGTK__) && !wxRICHTEXT_USE_OWN_CARET
@@ -1214,6 +1218,23 @@ void wxRichTextCtrl::OnChar(wxKeyEvent& event)
             case WXK_NUMPAD_BEGIN:
             case WXK_NUMPAD_INSERT:
             case WXK_WINDOWS_LEFT:
+            case WXK_BROWSER_BACK:
+            case WXK_BROWSER_FORWARD:
+            case WXK_BROWSER_REFRESH:
+            case WXK_BROWSER_STOP:
+            case WXK_BROWSER_SEARCH:
+            case WXK_BROWSER_FAVORITES:
+            case WXK_BROWSER_HOME:
+            case WXK_VOLUME_MUTE:
+            case WXK_VOLUME_DOWN:
+            case WXK_VOLUME_UP:
+            case WXK_MEDIA_NEXT_TRACK:
+            case WXK_MEDIA_PREV_TRACK:
+            case WXK_MEDIA_STOP:
+            case WXK_MEDIA_PLAY_PAUSE:
+            case WXK_LAUNCH_MAIL:
+            case WXK_LAUNCH_APP1:
+            case WXK_LAUNCH_APP2:
             {
                 return;
             }
@@ -2856,7 +2877,8 @@ void wxRichTextCtrl::OnIdle(wxIdleEvent& event)
     {
         ((wxRichTextCaret*) GetCaret())->SetNeedsUpdate(false);
         PositionCaret();
-        GetCaret()->Show();
+        if (!GetCaret()->IsVisible())
+            GetCaret()->Show();
     }
 #endif
 
@@ -2898,7 +2920,8 @@ void wxRichTextCtrl::OnScroll(wxScrollWinEvent& event)
 #if wxRICHTEXT_USE_OWN_CARET
     if (!((wxRichTextCaret*) GetCaret())->GetNeedsUpdate())
     {
-        GetCaret()->Hide();
+        if (GetCaret()->IsVisible())
+            GetCaret()->Hide();
         ((wxRichTextCaret*) GetCaret())->SetNeedsUpdate();
     }
 #endif
@@ -2920,7 +2943,7 @@ void wxRichTextCtrl::SetupScrollbars(bool atTop, bool fromOnPaint)
 
     // TODO: reimplement scrolling so we scroll by line, not by fixed number
     // of pixels. See e.g. wxVScrolledWindow for ideas.
-    int pixelsPerUnit = 5;
+    int pixelsPerUnit = GetLineHeight();
     wxSize clientSize = GetClientSize();
 
     int maxHeight = (int) (0.5 + GetScale() * (GetBuffer().GetCachedSize().y + GetBuffer().GetTopMargin()));
@@ -5243,7 +5266,7 @@ bool wxRichTextCtrl::ProcessDelayedImageLoading(const wxRect& screenRect, wxRich
 
                                 wxImage image;
                                 bool changed = false;
-                                if (imageObj->LoadAndScaleImageCache(image, contentRect.GetSize(), false, changed) && changed)
+                                if (imageObj->LoadAndScaleImageCache(image, contentRect.GetSize(), context, changed) && changed)
                                 {
                                     loadCount ++;
                                 }
@@ -5419,7 +5442,8 @@ void wxRichTextCaret::Notify()
     // Workaround for lack of kill focus event in wxOSX
     if (m_richTextCtrl && !m_richTextCtrl->HasFocus())
     {
-        Hide();
+        if (IsVisible())
+            Hide();
         return;
     }
 #endif

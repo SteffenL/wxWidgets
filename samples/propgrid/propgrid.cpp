@@ -558,6 +558,8 @@ wxBEGIN_EVENT_TABLE(FormMain, wxFrame)
 
     EVT_MENU( ID_RUNMINIMAL, FormMain::OnRunMinimalClick )
 
+    EVT_UPDATE_UI( ID_CATCOLOURS, FormMain::OnCatColoursUpdateUI )
+
     EVT_CONTEXT_MENU( FormMain::OnContextMenu )
     EVT_BUTTON(ID_SHOWPOPUP, FormMain::OnShowPopup)
 wxEND_EVENT_TABLE()
@@ -1175,35 +1177,6 @@ void FormMain::PopulateWithStandardItems ()
 
 // -----------------------------------------------------------------------
 
-// Helper procedure to rescale bitmaps
-static void RescaleBitmap(const wxBitmap& srcBmp, wxBitmap& dstBmp)
-{
-    // Source bitmap should rescaled to the size of target bitmap.
-    if ( srcBmp.GetSize() != dstBmp.GetSize() )
-    {
-#if wxUSE_IMAGE
-        // Use high-quality wxImage scaling functions
-        wxImage img = srcBmp.ConvertToImage();
-        img.Rescale(dstBmp.GetWidth(), dstBmp.GetHeight(), wxIMAGE_QUALITY_HIGH);
-        dstBmp = wxBitmap(img);
-#else
-        // Old method of scaling the image
-        double scaleX = (double)dstBmp.GetWidth() / (double)srcBmp.GetWidth();
-        double scaleY = (double)dstBmp.GetHeight() / (double)srcBmp.GetHeight();
-        dstBmp.UseAlpha(srcBmp.HasAlpha());
-        {
-            wxMemoryDC dc(dstBmp);
-            dc.SetUserScale(scaleX, scaleY);
-            dc.DrawBitmap(srcBmp, 0, 0);
-        }
-#endif
-    }
-    else
-    {
-        dstBmp = srcBmp;
-    }
-}
-
 void FormMain::PopulateWithExamples ()
 {
     wxPropertyGridManager* pgman = m_pPropGridManager;
@@ -1587,21 +1560,12 @@ void FormMain::PopulateWithExamples ()
     //
     // Test adding variable height bitmaps in wxPGChoices
     wxPGChoices bc;
-    wxBitmap smallBmp(16, 16);
-    wxBitmap bmp = wxArtProvider::GetBitmap(wxART_CDROM);
-    RescaleBitmap(bmp, smallBmp);
-
-    wxBitmap mediumBmp(32, 32);
-    bmp = wxArtProvider::GetBitmap(wxART_FLOPPY);
-    RescaleBitmap(bmp, mediumBmp);
-
-    wxBitmap largeBmp(64, 64);
-    bmp = wxArtProvider::GetBitmap(wxART_HARDDISK);
-    RescaleBitmap(bmp, largeBmp);
-
-    bc.Add(wxT("Wee"), smallBmp);
-    bc.Add(wxT("Not so wee"), mediumBmp);
-    bc.Add(wxT("Friggin' huge"), largeBmp);
+    bc.Add(wxT("Wee"),
+             wxArtProvider::GetBitmap(wxART_CDROM, wxART_OTHER, wxSize(16, 16)));
+    bc.Add(wxT("Not so wee"),
+             wxArtProvider::GetBitmap(wxART_FLOPPY, wxART_OTHER, wxSize(32, 32)));
+    bc.Add(wxT("Friggin' huge"),
+             wxArtProvider::GetBitmap(wxART_HARDDISK, wxART_OTHER, wxSize(64, 64)));
 
     pg->Append( new wxEnumProperty(wxT("Variable Height Bitmaps"),
                                    wxPG_LABEL,
@@ -2142,7 +2106,7 @@ FormMain::FormMain(const wxString& title, const wxPoint& pos, const wxSize& size
 
     menuTry->Append(ID_SELECTSTYLE, wxT("Set Window Style"),
         wxT("Select window style flags used by the grid."));
-    menuTry->Append(ID_ENABLELABELEDITING, wxT("Enable label editing"),
+    menuTry->AppendCheckItem(ID_ENABLELABELEDITING, wxT("Enable label editing"),
         wxT("This calls wxPropertyGrid::MakeColumnEditable(0)"));
 #if wxUSE_HEADERCTRL
     menuTry->AppendCheckItem(ID_SHOWHEADER,
@@ -2730,9 +2694,9 @@ void FormMain::OnFreezeClick( wxCommandEvent& event )
 
 // -----------------------------------------------------------------------
 
-void FormMain::OnEnableLabelEditing( wxCommandEvent& WXUNUSED(event) )
+void FormMain::OnEnableLabelEditing(wxCommandEvent& event)
 {
-    m_propGrid->MakeColumnEditable(0);
+    m_propGrid->MakeColumnEditable(0, event.IsChecked());
 }
 
 // -----------------------------------------------------------------------
@@ -2827,21 +2791,42 @@ void FormMain::OnColourScheme( wxCommandEvent& event )
 
 // -----------------------------------------------------------------------
 
+void FormMain::OnCatColoursUpdateUI(wxUpdateUIEvent& WXUNUSED(event))
+{
+    // Prevent menu item from being checked
+    // if it is selected from imroper page.
+    const wxPropertyGrid* pg = m_pPropGridManager->GetGrid();
+    m_itemCatColours->SetCheckable(
+         pg->GetPropertyByName("Appearance") &&
+         pg->GetPropertyByName("PositionCategory") &&
+         pg->GetPropertyByName("Environment") &&
+         pg->GetPropertyByName("More Examples") );
+}
+
 void FormMain::OnCatColours( wxCommandEvent& event )
 {
     wxPropertyGrid* pg = m_pPropGridManager->GetGrid();
+    if ( !pg->GetPropertyByName("Appearance") ||
+         !pg->GetPropertyByName("PositionCategory") ||
+         !pg->GetPropertyByName("Environment") ||
+         !pg->GetPropertyByName("More Examples") )
+    {
+        wxMessageBox("First switch to 'Standard Items' page!");
+        return;
+    }
+
     m_pPropGridManager->Freeze();
 
     if ( event.IsChecked() )
     {
         // Set custom colours.
-        pg->SetPropertyTextColour( wxT("Appearance"), wxColour(255,0,0), false );
+        pg->SetPropertyTextColour( wxT("Appearance"), wxColour(255,0,0), wxPG_DONT_RECURSE );
         pg->SetPropertyBackgroundColour( wxT("Appearance"), wxColour(255,255,183) );
         pg->SetPropertyTextColour( wxT("Appearance"), wxColour(255,0,183) );
-        pg->SetPropertyTextColour( wxT("PositionCategory"), wxColour(0,255,0), false );
+        pg->SetPropertyTextColour( wxT("PositionCategory"), wxColour(0,255,0), wxPG_DONT_RECURSE );
         pg->SetPropertyBackgroundColour( wxT("PositionCategory"), wxColour(255,226,190) );
         pg->SetPropertyTextColour( wxT("PositionCategory"), wxColour(255,0,190) );
-        pg->SetPropertyTextColour( wxT("Environment"), wxColour(0,0,255), false );
+        pg->SetPropertyTextColour( wxT("Environment"), wxColour(0,0,255), wxPG_DONT_RECURSE );
         pg->SetPropertyBackgroundColour( wxT("Environment"), wxColour(208,240,175) );
         pg->SetPropertyTextColour( wxT("Environment"), wxColour(255,255,255) );
         pg->SetPropertyBackgroundColour( wxT("More Examples"), wxColour(172,237,255) );
@@ -2851,9 +2836,12 @@ void FormMain::OnCatColours( wxCommandEvent& event )
     {
         // Revert to original.
         pg->SetPropertyColoursToDefault( wxT("Appearance") );
+        pg->SetPropertyColoursToDefault( wxT("Appearance"), wxPG_RECURSE );
         pg->SetPropertyColoursToDefault( wxT("PositionCategory") );
+        pg->SetPropertyColoursToDefault( wxT("PositionCategory"), wxPG_RECURSE );
         pg->SetPropertyColoursToDefault( wxT("Environment") );
-        pg->SetPropertyColoursToDefault( wxT("More Examples") );
+        pg->SetPropertyColoursToDefault( wxT("Environment"), wxPG_RECURSE );
+        pg->SetPropertyColoursToDefault( wxT("More Examples"), wxPG_RECURSE );
     }
     m_pPropGridManager->Thaw();
     m_pPropGridManager->Refresh();
