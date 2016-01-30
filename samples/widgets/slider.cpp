@@ -96,7 +96,7 @@ public:
     SliderWidgetsPage(WidgetsBookCtrl *book, wxImageList *imaglist);
     virtual ~SliderWidgetsPage(){};
 
-    virtual wxControl *GetWidget() const wxOVERRIDE { return m_slider; }
+    virtual wxWindow *GetWidget() const wxOVERRIDE { return m_slider; }
     virtual void RecreateWidget() wxOVERRIDE { CreateSlider(); }
 
     // lazy creation of the content
@@ -277,7 +277,7 @@ void SliderWidgetsPage::CreateContent()
     m_chkBothSides = CreateCheckBoxAndAddToSizer
                      (sizerLeft, wxT("&Both sides"), SliderPage_BothSides);
 #if wxUSE_TOOLTIPS
-    m_chkBothSides->SetToolTip( wxT("\"Both sides\" is only supported \nin Win95 and Universal") );
+    m_chkBothSides->SetToolTip( wxT("\"Both sides\" is only supported \nin Universal") );
 #endif // wxUSE_TOOLTIPS
 
     sizerLeft->Add(5, 5, 0, wxGROW | wxALL, 5); // spacer

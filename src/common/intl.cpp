@@ -37,9 +37,7 @@
     #include "wx/module.h"
 #endif // WX_PRECOMP
 
-#ifndef __WXWINCE__
-    #include <locale.h>
-#endif
+#include <locale.h>
 
 // standard headers
 #include <ctype.h>
@@ -178,7 +176,7 @@ wxString wxLanguageInfo::GetLocaleName() const
 // ----------------------------------------------------------------------------
 
 #include "wx/arrimpl.cpp"
-WX_DECLARE_EXPORTED_OBJARRAY(wxLanguageInfo, wxLanguageInfoArray);
+WX_DECLARE_USER_EXPORTED_OBJARRAY(wxLanguageInfo, wxLanguageInfoArray, WXDLLIMPEXP_BASE);
 WX_DEFINE_OBJARRAY(wxLanguageInfoArray)
 
 wxLanguageInfoArray *wxLocale::ms_languagesDB = NULL;
@@ -466,9 +464,6 @@ bool wxLocale::Init(int language, int flags)
         }
         else // language supported by Windows
         {
-            // Windows CE doesn't have SetThreadLocale() and there doesn't seem
-            // to be any equivalent
-#ifndef __WXWINCE__
             const wxUint32 lcid = info->GetLCID();
 
             // change locale used by Windows functions
@@ -485,7 +480,6 @@ bool wxLocale::Init(int language, int flags)
                 if (pfnSetThreadUILanguage)
                     pfnSetThreadUILanguage(LANGIDFROMLCID(lcid));
             }
-#endif
 
             // and also call setlocale() to change locale used by the CRT
             locale = info->GetLocaleName();
@@ -545,6 +539,11 @@ bool wxLocale::Init(int language, int flags)
     if ( !ret )
     {
         wxLogWarning(_("Cannot set locale to language \"%s\"."), name.c_str());
+
+        // As we failed to change locale, there is no need to restore the
+        // previous one: it's still valid.
+        free(const_cast<char *>(m_pszOldLocale));
+        m_pszOldLocale = NULL;
 
         // continue nevertheless and try to load at least the translations for
         // this language
@@ -792,7 +791,7 @@ wxString wxLocale::GetSystemEncodingName()
 {
     wxString encname;
 
-#if defined(__WIN32__) && !defined(__WXMICROWIN__)
+#if defined(__WIN32__)
     // FIXME: what is the error return value for GetACP()?
     UINT codepage = ::GetACP();
     encname.Printf(wxS("windows-%u"), codepage);
@@ -849,7 +848,7 @@ wxString wxLocale::GetSystemEncodingName()
 /* static */
 wxFontEncoding wxLocale::GetSystemEncoding()
 {
-#if defined(__WIN32__) && !defined(__WXMICROWIN__)
+#if defined(__WIN32__)
     UINT codepage = ::GetACP();
 
     // wxWidgets only knows about CP1250-1257, 874, 932, 936, 949, 950
@@ -1040,8 +1039,11 @@ wxLocale::~wxLocale()
     // restore old locale pointer
     wxSetLocale(m_pOldLocale);
 
-    wxSetlocale(LC_ALL, m_pszOldLocale);
-    free(const_cast<char *>(m_pszOldLocale));
+    if ( m_pszOldLocale )
+    {
+        wxSetlocale(LC_ALL, m_pszOldLocale);
+        free(const_cast<char *>(m_pszOldLocale));
+    }
 }
 
 

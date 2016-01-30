@@ -119,9 +119,14 @@ public:
 
     /** Paints property category selection rectangle.
     */
+#if WXWIN_COMPATIBILITY_3_0
     virtual void DrawCaptionSelectionRect( wxDC& dc,
                                            int x, int y,
                                            int w, int h ) const;
+#else
+    virtual void DrawCaptionSelectionRect(wxWindow *win, wxDC& dc,
+                                          int x, int y, int w, int h) const;
+#endif // WXWIN_COMPATIBILITY_3_0
 
     /** Utility to draw vertically centered text.
     */
@@ -179,11 +184,11 @@ public:
                          wxPGProperty* property,
                          int column,
                          int item,
-                         int flags ) const;
+                         int flags ) const wxOVERRIDE;
 
     virtual wxSize GetImageSize( const wxPGProperty* property,
                                  int column,
-                                 int item ) const;
+                                 int item ) const wxOVERRIDE;
 
 protected:
 };
@@ -1293,7 +1298,7 @@ public:
         @remarks
         - Default behaviour is to return wxSize(0,0), which means no image.
         - Default image width or height is indicated with dimension -1.
-        - You can also return wxPG_DEFAULT_IMAGE_SIZE, i.e. wxSize(-1, -1).
+        - You can also return wxPG_DEFAULT_IMAGE_SIZE, i.e. wxDefaultSize.
     */
     virtual wxSize OnMeasureImage( int item = -1 ) const;
 
@@ -2013,6 +2018,16 @@ public:
     void SetTextColour( const wxColour& colour,
                         int flags = wxPG_RECURSE );
 
+    /**
+        Sets property's default text and background colours.
+
+        @param flags
+            Default is wxPG_RECURSE which causes colours to be set recursively.
+            Omit this flag to only set colours for the property in question
+            and not any of its children.
+    */
+    void SetDefaultColours(int flags = wxPG_RECURSE);
+
     /** Set default value of a property. Synonymous to
 
         @code
@@ -2398,6 +2413,14 @@ protected:
                           bool recursively );
 
     /**
+        Clear cells associated with property.
+
+        @param recursively
+            If @true, apply this operation recursively in child properties.
+    */
+    void ClearCells(FlagType ignoreWithFlags, bool recursively);
+
+    /**
         Makes sure m_cells has size of column+1 (or more).
     */
     void EnsureCells( unsigned int column );
@@ -2433,9 +2456,7 @@ protected:
 
     bool HasCell( unsigned int column ) const
     {
-        if ( m_cells.size() > column )
-            return true;
-        return false;
+        return m_cells.size() > column;
     }
 
     void InitAfterAdded( wxPropertyGridPageState* pageState,
@@ -2551,7 +2572,7 @@ private:
 //
 
 #define WX_PG_DECLARE_DOGETEDITORCLASS \
-    virtual const wxPGEditor* DoGetEditorClass() const;
+    virtual const wxPGEditor* DoGetEditorClass() const wxOVERRIDE;
 
 #ifndef WX_PG_DECLARE_PROPERTY_CLASS
     #define WX_PG_DECLARE_PROPERTY_CLASS(CLASSNAME) \
@@ -2591,7 +2612,7 @@ public:
     wxPGRootProperty( const wxString& name = wxS("<Root>") );
     virtual ~wxPGRootProperty();
 
-    virtual bool StringToValue( wxVariant&, const wxString&, int ) const
+    virtual bool StringToValue( wxVariant&, const wxString&, int ) const wxOVERRIDE
     {
         return false;
     }
@@ -2621,8 +2642,8 @@ public:
 
     int GetTextExtent( const wxWindow* wnd, const wxFont& font ) const;
 
-    virtual wxString ValueToString( wxVariant& value, int argFlags ) const;
-    virtual wxString GetValueAsString( int argFlags = 0 ) const;
+    virtual wxString ValueToString( wxVariant& value, int argFlags ) const wxOVERRIDE;
+    virtual wxString GetValueAsString( int argFlags = 0 ) const wxOVERRIDE;
 
 protected:
     void SetTextColIndex( unsigned int colInd )

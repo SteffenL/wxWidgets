@@ -1707,7 +1707,7 @@ wxPoint wxPropertyGrid::GetGoodEditorDialogPosition( wxPGProperty* p,
     int x = splitterX;
     int y = p->GetY();
 
-    wxCHECK_MSG( y >= 0, wxPoint(-1,-1), wxS("invalid y?") );
+    wxCHECK_MSG( y >= 0, wxDefaultPosition, wxS("invalid y?") );
 
     ImprovedClientToScreen( &x, &y );
 
@@ -3777,7 +3777,8 @@ wxRect wxPropertyGrid::GetEditorWidgetRect( wxPGProperty* p, int column ) const
         {
             //m_iFlags |= wxPG_FL_CUR_USES_CUSTOM_IMAGE;
             int iw = p->OnMeasureImage().x;
-            if ( iw < 1 )
+            wxASSERT( iw == wxDefaultCoord || iw >= 0 );
+            if ( iw == wxDefaultCoord || iw == 0 )
                 iw = wxPG_CUSTOM_IMAGE_WIDTH;
             imageOffset = p->GetImageOffset(iw);
         }
@@ -3827,17 +3828,15 @@ wxSize wxPropertyGrid::GetImageSize( wxPGProperty* p, int item ) const
     else if ( item >= 0 && choiceCount == 0 )
         return wxSize(0, 0);
 
-    if ( cis.x < 0 )
+    wxASSERT( cis.x == wxDefaultCoord || cis.x >= 0 );
+    if ( cis.x == wxDefaultCoord )
     {
-        if ( cis.x <= -1 )
-            cis.x = wxPG_CUSTOM_IMAGE_WIDTH;
+        cis.x = wxPG_CUSTOM_IMAGE_WIDTH;
     }
-    if ( cis.y <= 0 )
+    wxASSERT( cis.y == wxDefaultCoord || cis.y >= 0 );
+    if ( cis.y == wxDefaultCoord || cis.y == 0 )
     {
-        if ( cis.y >= -1 )
-            cis.y = wxPG_STD_CUST_IMAGE_HEIGHT(m_lineHeight);
-        else
-            cis.y = -cis.y;
+        cis.y = wxPG_STD_CUST_IMAGE_HEIGHT(m_lineHeight);
     }
     return cis;
 }
@@ -4377,7 +4376,7 @@ bool wxPropertyGrid::DoSelectProperty( wxPGProperty* p, unsigned int flags )
             {
                 // Clear help box - but only if it was written
                 // by us at previous time.
-                statusbar->SetStatusText( m_emptyString );
+                statusbar->SetStatusText(wxEmptyString);
                 m_iFlags &= ~(wxPG_FL_STRING_IN_STATUSBAR);
             }
         }
@@ -4661,13 +4660,20 @@ void wxPropertyGrid::OnResize( wxSizeEvent& event )
 
     if ( !HasExtraStyle(wxPG_EX_NATIVE_DOUBLE_BUFFERING) )
     {
+        // Scaled bitmaps only work on Mac currently
+#ifdef __WXOSX_COCOA__
+        double scaleFactor = GetContentScaleFactor();
+#else
+        double scaleFactor = 1.0;
+#endif
         int dblh = (m_lineHeight*2);
         if ( !m_doubleBuffer )
         {
             // Create double buffer bitmap to draw on, if none
             int w = wxMax(width, 250);
             int h = wxMax(height + dblh, 400);
-            m_doubleBuffer = new wxBitmap( w, h );
+            m_doubleBuffer = new wxBitmap;
+            m_doubleBuffer->CreateScaled( w, h, wxBITMAP_SCREEN_DEPTH, scaleFactor );
         }
         else
         {
@@ -4680,7 +4686,8 @@ void wxPropertyGrid::OnResize( wxSizeEvent& event )
                 if ( w < width ) w = width;
                 if ( h < (height+dblh) ) h = height + dblh;
                 delete m_doubleBuffer;
-                m_doubleBuffer = new wxBitmap( w, h );
+                m_doubleBuffer = new wxBitmap;
+                m_doubleBuffer->CreateScaled( w, h, wxBITMAP_SCREEN_DEPTH, scaleFactor );
             }
         }
     }
@@ -5153,14 +5160,14 @@ bool wxPropertyGrid::HandleMouseMove( int x, unsigned int y,
                         }
                         else
                         {
-                            SetToolTip( m_emptyString );
+                            SetToolTip(wxEmptyString);
                         }
 
                     }
                 }
                 else
                 {
-                    SetToolTip( m_emptyString );
+                    SetToolTip(wxEmptyString);
                 }
             }
         }
@@ -5621,6 +5628,21 @@ void wxPropertyGrid::ClearActionTriggers( int action )
     }
     while ( didSomething );
 }
+
+#if WXWIN_COMPATIBILITY_3_0
+// Utility to find if specific item is in a vector. Returns index to
+// the item, or wxNOT_FOUND if not present.
+template<typename CONTAINER, typename T>
+int wxPGFindInVector( CONTAINER vector, const T& item )
+{
+    for ( unsigned int i=0; i<vector.size(); i++ )
+    {
+        if ( vector[i] == item )
+            return (int) i;
+    }
+    return wxNOT_FOUND;
+}
+#endif // WXWIN_COMPATIBILITY_3_0
 
 void wxPropertyGrid::HandleKeyEvent( wxKeyEvent &event, bool fromChild )
 {
