@@ -1697,9 +1697,7 @@ wxString wxFlagsProperty::ValueToString( wxVariant& value,
     const wxPGChoices& choices = m_choices;
     for ( unsigned int i = 0; i < GetItemCount(); i++ )
     {
-        int doAdd;
-        doAdd = ( (flags & choices.GetValue(i)) == choices.GetValue(i) );
-
+        bool doAdd = ( (flags & choices.GetValue(i)) == choices.GetValue(i) );
         if ( doAdd )
         {
             text += choices.GetLabel(i);
@@ -2649,10 +2647,7 @@ void wxPGArrayStringEditorDialog::ArrayRemoveAt( int index )
 
 void wxPGArrayStringEditorDialog::ArraySwap( size_t first, size_t second )
 {
-    wxString old_str = m_array[first];
-    wxString new_str = m_array[second];
-    m_array[first] = new_str;
-    m_array[second] = old_str;
+    wxSwap(m_array[first], m_array[second]);
 }
 
 wxPGArrayStringEditorDialog::wxPGArrayStringEditorDialog()

@@ -349,8 +349,6 @@ void wxHtmlWordCell::Split(const wxDC& dc,
 
     // before selection:
     // (include character under caret only if in first half of width)
-#ifdef __WXMAC__
-    // implementation using PartialExtents to support fractional widths
     wxArrayInt widths ;
     dc.GetPartialTextExtents(m_Word,widths) ;
     while( i < len && pt1.x >= widths[i] )
@@ -361,24 +359,10 @@ void wxHtmlWordCell::Split(const wxDC& dc,
         if ( widths[i] - pt1.x < charW/2 )
             i++;
     }
-#else // !__WXMAC__
-    wxCoord charW, charH;
-    while ( pt1.x > 0 && i < len )
-    {
-        dc.GetTextExtent(m_Word[i], &charW, &charH);
-        pt1.x -= charW;
-        if ( pt1.x >= -charW/2 )
-        {
-            pos1 += charW;
-            i++;
-        }
-    }
-#endif // __WXMAC__/!__WXMAC__
 
     // in selection:
     // (include character under caret only if in first half of width)
     unsigned j = i;
-#ifdef __WXMAC__
     while( j < len && pt2.x >= widths[j] )
         j++ ;
     if ( j < len )
@@ -387,20 +371,6 @@ void wxHtmlWordCell::Split(const wxDC& dc,
         if ( widths[j] - pt2.x < charW/2 )
             j++;
     }
-#else // !__WXMAC__
-    pos2 = pos1;
-    pt2.x -= pos2;
-    while ( pt2.x > 0 && j < len )
-    {
-        dc.GetTextExtent(m_Word[j], &charW, &charH);
-        pt2.x -= charW;
-        if ( pt2.x >= -charW/2 )
-        {
-            pos2 += charW;
-            j++;
-        }
-    }
-#endif // __WXMAC__/!__WXMAC__
 
     pos1 = i;
     pos2 = j;
@@ -510,6 +480,25 @@ void wxHtmlWordCell::Draw(wxDC& dc, int x, int y,
         wxHtmlSelectionState selstate = info.GetState().GetSelectionState();
         // Not changing selection state, draw the word in single mode:
         SwitchSelState(dc, info, selstate != wxHTML_SEL_OUT);
+
+        // This is a quite horrible hack but it fixes a nasty user-visible
+        // problem: when drawing underlined text, which is common in wxHTML as
+        // all links are underlined, there is a 1 pixel gap between the
+        // underlines because we draw separate words in separate DrawText()
+        // calls. The right thing to do would be to draw all of them appearing
+        // on the same line at once (this would probably be more efficient as
+        // well), but this doesn't seem simple to do, so instead we just draw
+        // an extra space at a negative offset to ensure that the underline
+        // spans the previous pixel and so overlaps the one from the previous
+        // word, if any.
+        const bool prevUnderlined = info.WasPreviousUnderlined();
+        const bool thisUnderlined = dc.GetFont().GetUnderlined();
+        if ( prevUnderlined && thisUnderlined )
+        {
+            dc.DrawText(wxS(" "), x + m_PosX - 1, y + m_PosY);
+        }
+        info.SetCurrentUnderlined(thisUnderlined);
+
         dc.DrawText(m_Word, x + m_PosX, y + m_PosY);
         drawSelectionAfterCell = (selstate != wxHTML_SEL_OUT);
     }

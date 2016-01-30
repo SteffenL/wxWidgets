@@ -3,7 +3,7 @@
  * Template for the set.h file for VMS                                       *
  * Created from setup.h_in                                                   *
  * Author : J.Jansen (joukj@hrem.nano.tudelft.nl)                            *
- * Date : 20 April 2015                                                      *
+ * Date : 5 January 2016                                                     *
  *                                                                           *
  *****************************************************************************/
 
@@ -570,6 +570,8 @@ typedef pid_t GPid;
 
 #define wxUSE_PROGRESSDLG 1
 
+#define wxUSE_NATIVE_PROGRESSDLG 1
+
 #define wxUSE_STARTUP_TIPS 1
 
 #define wxUSE_TEXTDLG 1
@@ -882,14 +884,6 @@ typedef pid_t GPid;
  * Use GNOME VFS for MIME types
  */
 #define wxUSE_LIBGNOMEVFS 0
-/*
- * Use the Hildon framework
- */
-#define wxUSE_LIBHILDON 0
-/*
- * Use the Hildon 2.0 framework
- */
-#define wxUSE_LIBHILDON2 0
 
 #define wxUSE_DC_TRANSFORM_MATRIX 1
 

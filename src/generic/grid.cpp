@@ -1055,7 +1055,8 @@ void wxGridTableBase::SetRowAttr(wxGridCellAttr *attr, int row)
 {
     if ( m_attrProvider )
     {
-        attr->SetKind(wxGridCellAttr::Row);
+        if ( attr )
+            attr->SetKind(wxGridCellAttr::Row);
         m_attrProvider->SetRowAttr(attr, row);
     }
     else
@@ -1070,7 +1071,8 @@ void wxGridTableBase::SetColAttr(wxGridCellAttr *attr, int col)
 {
     if ( m_attrProvider )
     {
-        attr->SetKind(wxGridCellAttr::Col);
+        if ( attr )
+            attr->SetKind(wxGridCellAttr::Col);
         m_attrProvider->SetColAttr(attr, col);
     }
     else
@@ -4640,7 +4642,7 @@ wxGrid::SendGridSizeEvent(wxEventType type,
 //  +1 if the event was processed (but not vetoed)
 //   0 if the event wasn't handled
 int
-wxGrid::SendEvent(const wxEventType type,
+wxGrid::SendEvent(wxEventType type,
                   int row, int col,
                   const wxMouseEvent& mouseEv)
 {
@@ -4715,7 +4717,7 @@ wxGrid::SendEvent(const wxEventType type,
 // Generate a grid event of specified type, return value same as above
 //
 int
-wxGrid::SendEvent(const wxEventType type, int row, int col, const wxString& s)
+wxGrid::SendEvent(wxEventType type, int row, int col, const wxString& s)
 {
     wxGridEvent gridEvt( GetId(), type, this, row, col );
     gridEvt.SetString(s);

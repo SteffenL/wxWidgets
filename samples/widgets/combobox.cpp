@@ -94,7 +94,7 @@ class ComboboxWidgetsPage : public ItemContainerWidgetsPage
 public:
     ComboboxWidgetsPage(WidgetsBookCtrl *book, wxImageList *imaglist);
 
-    virtual wxControl *GetWidget() const wxOVERRIDE { return m_combobox; }
+    virtual wxWindow *GetWidget() const wxOVERRIDE { return m_combobox; }
     virtual wxTextEntryBase *GetTextEntry() const wxOVERRIDE { return m_combobox; }
     virtual wxItemContainer* GetContainer() const wxOVERRIDE { return m_combobox; }
     virtual void RecreateWidget() wxOVERRIDE { CreateCombo(); }
@@ -431,7 +431,7 @@ void ComboboxWidgetsPage::CreateCombo()
             break;
 
         case ComboKind_DropDown:
-            flags = wxCB_DROPDOWN;
+            flags |= wxCB_DROPDOWN;
             break;
     }
 

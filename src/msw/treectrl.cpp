@@ -340,11 +340,11 @@ static bool SetFocus(HWND hwndTV, HTREEITEM htItem)
             // prevent the tree from unselecting the old focus which it
             // would do by default (TreeView_SelectItem unselects the
             // focused item)
-            TreeView_SelectItem(hwndTV, 0);
+            (void)TreeView_SelectItem(hwndTV, 0);
             SelectItem(hwndTV, htFocus);
         }
 
-        TreeView_SelectItem(hwndTV, htItem);
+        (void)TreeView_SelectItem(hwndTV, htItem);
 
         if ( !wasSelected )
         {
@@ -359,7 +359,7 @@ static bool SetFocus(HWND hwndTV, HTREEITEM htItem)
         bool wasFocusSelected = IsItemSelected(hwndTV, htFocus);
 
         // just clear the focus
-        TreeView_SelectItem(hwndTV, 0);
+        (void)TreeView_SelectItem(hwndTV, 0);
 
         if ( wasFocusSelected )
         {
@@ -763,11 +763,10 @@ bool wxTreeCtrl::Create(wxWindow *parent,
 
     if ( m_windowStyle & wxTR_FULL_ROW_HIGHLIGHT )
     {
-        if ( wxApp::GetComCtl32Version() >= 471 )
-            wstyle |= TVS_FULLROWSELECT;
+        wstyle |= TVS_FULLROWSELECT;
     }
 
-#if !defined(__WXWINCE__) && defined(TVS_INFOTIP)
+#if defined(TVS_INFOTIP)
     // Need so that TVN_GETINFOTIP messages will be sent
     wstyle |= TVS_INFOTIP;
 #endif
@@ -781,16 +780,11 @@ bool wxTreeCtrl::Create(wxWindow *parent,
 
     wxSetCCUnicodeFormat(GetHwnd());
 
-    // Under Vista and later Explorer uses rotating ("twist") buttons
-    // instead of the default "+/-" ones so apply its theme to the tree
-    // control to implement this style.
-    if ( wxGetWinVersion() >= wxWinVersion_Vista )
+    if ( m_windowStyle & wxTR_TWIST_BUTTONS )
     {
-        // Was GetIfActive() instead of Get(). Somehow did not work?
-        if ( wxUxThemeEngine *theme = wxUxThemeEngine::Get() )
-        {
-            theme->SetWindowTheme(GetHwnd(), L"EXPLORER", NULL);
-        }
+        // The Vista+ system theme uses rotating ("twist") buttons, so we map
+        // this style to it.
+        EnableSystemTheme();
     }
 
     return true;
@@ -871,7 +865,7 @@ unsigned int wxTreeCtrl::GetIndent() const
 
 void wxTreeCtrl::SetIndent(unsigned int indent)
 {
-    TreeView_SetIndent(GetHwnd(), indent);
+    (void)TreeView_SetIndent(GetHwnd(), indent);
 }
 
 void wxTreeCtrl::SetAnyImageList(wxImageList *imageList, int which)
@@ -1523,10 +1517,10 @@ wxTreeItemId wxTreeCtrl::DoInsertAfter(const wxTreeItemId& parent,
     // need this to make the "[+]" appear
     if ( firstChild )
     {
-        TVGetItemRectParam param;
+        TVGetItemRectParam param2;
 
-        wxTreeView_GetItemRect(GetHwnd(), HITEM(parent), param, FALSE);
-        ::InvalidateRect(GetHwnd(), &param.rect, FALSE);
+        wxTreeView_GetItemRect(GetHwnd(), HITEM(parent), param2, FALSE);
+        ::InvalidateRect(GetHwnd(), &param2.rect, FALSE);
     }
 
     // associate the application tree item with Win32 tree item handle
@@ -1967,7 +1961,7 @@ void wxTreeCtrl::EnsureVisible(const wxTreeItemId& item)
     wxCHECK_RET( !IsHiddenRoot(item), wxT("can't show hidden root item") );
 
     // no error return
-    TreeView_EnsureVisible(GetHwnd(), HITEM(item));
+    (void)TreeView_EnsureVisible(GetHwnd(), HITEM(item));
 }
 
 void wxTreeCtrl::ScrollTo(const wxTreeItemId& item)
@@ -2029,7 +2023,8 @@ wxTextCtrl *wxTreeCtrl::EditLabel(const wxTreeItemId& item,
 // End label editing, optionally cancelling the edit
 void wxTreeCtrl::DoEndEditLabel(bool discardChanges)
 {
-    TreeView_EndEditLabelNow(GetHwnd(), discardChanges);
+    if ( !TreeView_EndEditLabelNow(GetHwnd(), discardChanges) )
+        wxLogLastError(wxS("TreeView_EndEditLabelNow()"));
 
     DeleteTextCtrl();
 }
@@ -2168,7 +2163,8 @@ void wxTreeCtrl::SortChildren(const wxTreeItemId& item)
     //     OnCompareItems
     if ( GetClassInfo() == wxCLASSINFO(wxTreeCtrl) )
     {
-        TreeView_SortChildren(GetHwnd(), HITEM(item), 0);
+        if ( !TreeView_SortChildren(GetHwnd(), HITEM(item), 0) )
+            wxLogLastError(wxS("TreeView_SortChildren()"));
     }
     else
     {
@@ -2176,7 +2172,8 @@ void wxTreeCtrl::SortChildren(const wxTreeItemId& item)
         tvSort.hParent = HITEM(item);
         tvSort.lpfnCompare = wxTreeSortHelper::Compare;
         tvSort.lParam = (LPARAM)this;
-        TreeView_SortChildrenCB(GetHwnd(), &tvSort, 0 /* reserved */);
+        if ( !TreeView_SortChildrenCB(GetHwnd(), &tvSort, 0 /* reserved */) )
+            wxLogLastError(wxS("TreeView_SortChildrenCB()"));
     }
 }
 
@@ -2969,7 +2966,6 @@ wxTreeCtrl::MSWWindowProc(WXUINT nMsg, WXWPARAM wParam, WXLPARAM lParam)
                 break;
 
             case WM_MOUSEMOVE:
-#ifndef __WXWINCE__
                 if ( m_htClickedItem )
                 {
                     int cx = abs(m_ptClick.x - x);
@@ -2994,28 +2990,28 @@ wxTreeCtrl::MSWWindowProc(WXUINT nMsg, WXWPARAM wParam, WXLPARAM lParam)
                         tviAux.hItem = HITEM(m_htClickedItem);
                         tviAux.mask = TVIF_STATE | TVIF_PARAM;
                         tviAux.stateMask = 0xffffffff;
-                        TreeView_GetItem(GetHwnd(), &tviAux);
+                        if ( TreeView_GetItem(GetHwnd(), &tviAux) )
+                        {
+                            tv.itemNew.state = tviAux.state;
+                            tv.itemNew.lParam = tviAux.lParam;
 
-                        tv.itemNew.state = tviAux.state;
-                        tv.itemNew.lParam = tviAux.lParam;
+                            tv.ptDrag.x = x;
+                            tv.ptDrag.y = y;
 
-                        tv.ptDrag.x = x;
-                        tv.ptDrag.y = y;
+                            // do it before SendMessage() call below to avoid
+                            // reentrancies here if there is another WM_MOUSEMOVE
+                            // in the queue already
+                            m_htClickedItem.Unset();
 
-                        // do it before SendMessage() call below to avoid
-                        // reentrancies here if there is another WM_MOUSEMOVE
-                        // in the queue already
-                        m_htClickedItem.Unset();
+                            ::SendMessage(GetHwndOf(GetParent()), WM_NOTIFY,
+                                          tv.hdr.idFrom, (LPARAM)&tv );
 
-                        ::SendMessage(GetHwndOf(GetParent()), WM_NOTIFY,
-                                      tv.hdr.idFrom, (LPARAM)&tv );
-
-                        // don't pass it to the default window proc, it would
-                        // start dragging again
-                        processed = true;
+                            // don't pass it to the default window proc, it would
+                            // start dragging again
+                            processed = true;
+                        }
                     }
                 }
-#endif // __WXWINCE__
 
 #if wxUSE_DRAGIMAGE
                 if ( m_dragImage )
@@ -3026,7 +3022,8 @@ wxTreeCtrl::MSWWindowProc(WXUINT nMsg, WXWPARAM wParam, WXLPARAM lParam)
                         // highlight the item as target (hiding drag image is
                         // necessary - otherwise the display will be corrupted)
                         m_dragImage->Hide();
-                        TreeView_SelectDropTarget(GetHwnd(), htItem);
+                        if ( !TreeView_SelectDropTarget(GetHwnd(), htItem) )
+                            wxLogLastError(wxS("TreeView_SelectDropTarget()"));
                         m_dragImage->Show();
                     }
                 }
@@ -3099,7 +3096,8 @@ wxTreeCtrl::MSWWindowProc(WXUINT nMsg, WXWPARAM wParam, WXLPARAM lParam)
 
                     // if we don't do it, the tree seems to think that 2 items
                     // are selected simultaneously which is quite weird
-                    TreeView_SelectDropTarget(GetHwnd(), 0);
+                    if ( !TreeView_SelectDropTarget(GetHwnd(), 0) )
+                        wxLogLastError(wxS("TreeView_SelectDropTarget(0)"));
                 }
 #endif // wxUSE_DRAGIMAGE
 
@@ -3233,7 +3231,8 @@ wxTreeCtrl::MSWDefWindowProc(WXUINT nMsg, WXWPARAM wParam, WXLPARAM lParam)
 
                 // if we don't do it, the tree seems to think that 2 items
                 // are selected simultaneously which is quite weird
-                TreeView_SelectDropTarget(GetHwnd(), 0);
+                if ( !TreeView_SelectDropTarget(GetHwnd(), 0) )
+                    wxLogLastError(wxS("TreeView_SelectDropTarget(0)"));
             }
         }
     }
@@ -3318,7 +3317,6 @@ bool wxTreeCtrl::MSWOnNotify(int idCtrl, WXLPARAM lParam, WXLPARAM *result)
                 break;
             }
 
-#ifndef __WXWINCE__
         // These *must* not be removed or TVN_GETINFOTIP will
         // not be processed each time the mouse is moved
         // and the tooltip will only ever update once.
@@ -3342,7 +3340,6 @@ bool wxTreeCtrl::MSWOnNotify(int idCtrl, WXLPARAM lParam, WXLPARAM *result)
                 break;
             }
 #endif // TVN_GETINFOTIP
-#endif // !__WXWINCE__
 
         case TVN_GETDISPINFO:
             eventType = wxEVT_TREE_GET_INFO;
@@ -3643,7 +3640,10 @@ bool wxTreeCtrl::MSWOnNotify(int idCtrl, WXLPARAM lParam, WXLPARAM *result)
                     if ( MSWIsOnItem(tvhti.flags) )
                     {
                         event.m_item = tvhti.hItem;
-                        eventType = hdr->code == NM_DBLCLK
+                        // Cast is needed for the very old (gcc 3.4.5) MinGW
+                        // headers which didn't define NM_DBLCLK as unsigned,
+                        // resulting in signed/unsigned comparison warning.
+                        eventType = hdr->code == (UINT)NM_DBLCLK
                                     ? wxEVT_TREE_ITEM_ACTIVATED
                                     : wxEVT_TREE_ITEM_RIGHT_CLICK;
 
@@ -3770,7 +3770,6 @@ bool wxTreeCtrl::MSWOnNotify(int idCtrl, WXLPARAM lParam, WXLPARAM *result)
             DeleteTextCtrl();
             break;
 
-#ifndef __WXWINCE__
 #ifdef TVN_GETINFOTIP
          case TVN_GETINFOTIP:
             {
@@ -3781,7 +3780,6 @@ bool wxTreeCtrl::MSWOnNotify(int idCtrl, WXLPARAM lParam, WXLPARAM *result)
                 }
             }
             break;
-#endif
 #endif
 
         case TVN_SELCHANGING:

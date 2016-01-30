@@ -3587,8 +3587,6 @@ public:
                             userData);
     }
 
-    wxList* GetDynamicEventTable() const { return m_dynamicEvents ; }
-
     // User data can be associated with each wxEvtHandler
     void SetClientObject( wxClientData *data ) { DoSetClientObject(data); }
     wxClientData *GetClientObject() const { return DoGetClientObject(); }
@@ -3609,6 +3607,14 @@ public:
     static bool ProcessEventIfMatchesId(const wxEventTableEntryBase& tableEntry,
                                         wxEvtHandler *handler,
                                         wxEvent& event);
+
+    // Allow iterating over all connected dynamic event handlers: you must pass
+    // the same "cookie" to GetFirst() and GetNext() and call them until null
+    // is returned.
+    //
+    // These functions are for internal use only.
+    wxDynamicEventTableEntry* GetFirstDynamicEntry(size_t& cookie) const;
+    wxDynamicEventTableEntry* GetNextDynamicEntry(size_t& cookie) const;
 
     virtual bool SearchEventTable(wxEventTable& table, wxEvent& event);
     bool SearchDynamicEventTable( wxEvent& event );
@@ -3680,7 +3686,10 @@ protected:
 
     wxEvtHandler*       m_nextHandler;
     wxEvtHandler*       m_previousHandler;
-    wxList*             m_dynamicEvents;
+
+    typedef wxVector<wxDynamicEventTableEntry*> DynamicEvents;
+    DynamicEvents* m_dynamicEvents;
+
     wxList*             m_pendingEvents;
 
 #if wxUSE_THREADS
@@ -4299,11 +4308,7 @@ typedef void (wxEvtHandler::*wxClipboardTextEventFunction)(wxClipboardTextEvent&
 #define EVT_LISTBOX_DCLICK(winid, func) wx__DECLARE_EVT1(wxEVT_LISTBOX_DCLICK, winid, wxCommandEventHandler(func))
 #define EVT_MENU(winid, func) wx__DECLARE_EVT1(wxEVT_MENU, winid, wxCommandEventHandler(func))
 #define EVT_MENU_RANGE(id1, id2, func) wx__DECLARE_EVT2(wxEVT_MENU, id1, id2, wxCommandEventHandler(func))
-#if defined(__SMARTPHONE__)
-#  define EVT_BUTTON(winid, func) EVT_MENU(winid, func)
-#else
-#  define EVT_BUTTON(winid, func) wx__DECLARE_EVT1(wxEVT_BUTTON, winid, wxCommandEventHandler(func))
-#endif
+#define EVT_BUTTON(winid, func) wx__DECLARE_EVT1(wxEVT_BUTTON, winid, wxCommandEventHandler(func))
 #define EVT_SLIDER(winid, func) wx__DECLARE_EVT1(wxEVT_SLIDER, winid, wxCommandEventHandler(func))
 #define EVT_RADIOBOX(winid, func) wx__DECLARE_EVT1(wxEVT_RADIOBOX, winid, wxCommandEventHandler(func))
 #define EVT_RADIOBUTTON(winid, func) wx__DECLARE_EVT1(wxEVT_RADIOBUTTON, winid, wxCommandEventHandler(func))
