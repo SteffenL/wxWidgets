@@ -1105,7 +1105,7 @@ gtk_window_key_press_callback( GtkWidget *WXUNUSED(widget),
 
                 break;
             }
-            if (ancestor->IsTopLevel())
+            if (ancestor->IsTopNavigationDomain())
                 break;
             ancestor = ancestor->GetParent();
         }
@@ -4684,8 +4684,6 @@ void wxPopupMenuPositionCallback( GtkMenu *menu,
 bool wxWindowGTK::DoPopupMenu( wxMenu *menu, int x, int y )
 {
     wxCHECK_MSG( m_widget != NULL, false, wxT("invalid window") );
-
-    menu->UpdateUI();
 
     wxPoint pos;
     gpointer userdata;

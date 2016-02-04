@@ -27,6 +27,9 @@ Changes in behaviour not resulting in compilation errors
 - Using invalid flags with wxBoxSizer or wxGridSizer items now triggers asserts
   when done from the code or error messages when done in XRC.
 
+- wxOSX/Carbon port doesn't exist any more, wxOSX/Cocoa will be silently used
+  instead even if configure --with-osx_carbon option is used.
+
 Changes in behaviour which may result in build errors
 -----------------------------------------------------
 
@@ -55,6 +58,7 @@ Changes in behaviour which may result in build errors
 All:
 
 - Add UTF-8 and ZIP 64 support to wxZip{Input,Output}Stream (Tobias Taschner).
+- Upgrade libpng to 1.6.21 fixing several security bugs (Paul Kulchenko).
 - Add wxStandardPaths::GetUserDir() (Tobias Taschner).
 - Allow calling wxItemContainer::Add() and similar with std::vector<> argument.
 - Add "%z" support to printf()-like functions like wxString::Format() (RIVDSL).
@@ -141,6 +145,8 @@ All (GUI):
 - Fix a crash when using animated GIFs in wxHtmlListBox.
 - Use platform-specific stock icons for wxEditableListBox buttons.
 - Add support for the events from multimedia keys (Jens Göpfert).
+- Improve wxAUI appearance in high contrast themes (Zane U. Ji).
+- Allow suppressing warnings from wxImage::LoadFile().
 
 wxGTK:
 
@@ -149,6 +155,7 @@ wxGTK:
 - Fix clearing of wxComboBox with wxCB_READONLY (Chuddah).
 - Fix setting "pressed" bitmap for wxToggleButton (Kevin B. McCarty).
 - Fix GTK+ warnings for wxFileDialog with wxFD_MULTIPLE style.
+- Don't generate wxEVT_LIST_ITEM_RIGHT_CLICK outside of item area (Igor Korot).
 
 wxMSW:
 
@@ -189,6 +196,7 @@ wxMSW:
 - Make wxListCtrl &c appearance more native on modern systems (Tobias Taschner).
 - Don't send wxActivateEvent for minimized windows (bzcdr).
 - Return correct OS version under Windows 8.1 and later.
+- Fix crash in wxD2DContext when using non-MSVC compiler (iwbnwif).
 
 wxOSX/Cocoa:
 
@@ -196,11 +204,12 @@ wxOSX/Cocoa:
 - Implement wxWindow::Disable() for non-native controls too (Steve Browne).
 - Implement wxTopLevelWindow::EnableCloseButton() (John Roberts).
 - Fix wxEVT_CHAR for non-BMP Unicode characters (ARATA Mizuki).
-- Add support for wxEVT_COMBOBOX_DROPDOWN and wxEVT_COMBOBOX_CLOSEUP
-  events (Igor Korot).
+- Add wxTE_AUTO_URL support to wxTextCtrl (Igor Korot).
+- Add support for wxEVT_COMBOBOX_{DROPDOWN, CLOSEUP} events (Igor Korot).
 - Implement strike-through support in wxFont (Igor Korot).
 - Provide native implementation of wxStandardPaths (Tobias Taschner).
 - Add wxTE_{RIGHT,CENTER} support for multiline wxTextCtrl (Andreas Falkenhahn).
 - Don't leave wxSlider labels shown when the slider itself is hidden.
 - Don't generate wxEVT_TEXT_ENTER for controls without wxTE_PROCESS_ENTER.
 - Implement wxToolTip::SetDelay() (David Vanderson).
+- Correct positioning of popup menus relative to mouse pointer (John Roberts).

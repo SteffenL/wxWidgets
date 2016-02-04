@@ -412,6 +412,23 @@ NSView* wxMacEditHelper::ms_viewCurrentlyEdited = nil;
         impl->DoNotifyFocusLost();
 }
 
+-(BOOL)textView:(NSTextView *)aTextView clickedOnLink:(id)link atIndex:(NSUInteger)charIndex
+{
+    wxWidgetCocoaImpl* impl = (wxWidgetCocoaImpl* ) wxWidgetImpl::FindFromWXWidget( aTextView );
+    if ( impl  )
+    {
+        wxWindow* wxpeer = (wxWindow*) impl->GetWXPeer();
+        if ( wxpeer )
+        {
+            wxMouseEvent evtMouse( wxEVT_LEFT_DOWN );
+            wxTextUrlEvent event( wxpeer->GetId(), evtMouse, (long int)charIndex, (long int)charIndex );
+            event.SetEventObject( wxpeer );
+            wxpeer->HandleWindowEvent( event );
+        }
+    }
+    return NO;
+}
+
 @end
 
 @implementation wxNSTextField
@@ -603,7 +620,8 @@ wxNSTextViewControl::wxNSTextViewControl( wxTextCtrl *wxPeer, WXWidget w, long s
     [tv setVerticallyResizable:YES];
     [tv setHorizontallyResizable:hasHScroll];
     [tv setAutoresizingMask:NSViewWidthSizable];
-
+    [tv setAutomaticDashSubstitutionEnabled:false];
+    
     if ( hasHScroll )
     {
         [[tv textContainer] setContainerSize:NSMakeSize(FLT_MAX, FLT_MAX)];
@@ -622,6 +640,11 @@ wxNSTextViewControl::wxNSTextViewControl( wxTextCtrl *wxPeer, WXWidget w, long s
     if ( !wxPeer->HasFlag(wxTE_RICH | wxTE_RICH2) )
     {
         [tv setRichText:NO];
+    }
+
+    if ( wxPeer->HasFlag(wxTE_AUTO_URL) )
+    {
+        [tv setAutomaticLinkDetectionEnabled:YES];
     }
 
     [m_scrollView setDocumentView: tv];
@@ -671,7 +694,14 @@ void wxNSTextViewControl::SetStringValue( const wxString &str)
     wxMacEditHelper helper(m_textView);
 
     if (m_textView)
+    {
         [m_textView setString: wxCFStringRef( st , m_wxPeer->GetFont().GetEncoding() ).AsNSString()];
+        if ( m_wxPeer->HasFlag(wxTE_AUTO_URL) )
+        {
+            // Make sure that any URLs in the new text are highlighted.
+            [m_textView checkTextInDocument:nil];
+        }
+    }
 }
 
 void wxNSTextViewControl::Copy()

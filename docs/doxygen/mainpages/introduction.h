@@ -89,14 +89,13 @@ mature. Both ports work on almost any Unix system (Linux, FreeBSD, OpenBSD,
 NetBSD, Solaris, AIX, ...) and require GTK+ 2.6 or later or GTK+ 3.x. The
 primary supported compiler is GNU g++.
 
-@li wxOSX: wxOSX/Cocoa is the primary port for Apple computers, replacing the
-older and now deprecated wxOSX/Carbon port. wxOSX/Cocoa supports 32 or 64 bit
-Intel Macs running OS X 10.7 or later. The port can be built either with g++
-or clang.
+@li wxOSX/Cocoa: This is the native port for Apple computers. wxOSX/Cocoa
+supports 32 or 64 bit Intel Macs running OS X 10.7 or later. The port can be
+built either with g++ or clang.
 
 Other platforms (e.g. iOS), compilers (Borland C++ under Windows,
-Sun CC, HP-UX aCC, IBM xlC or SGI mipsPro under Unix) and ports (wxOSX/Carbon,
-wxGTK1, wxX11, wxDFB, wxPM...) are also supported but to a lesser extent.
+Sun CC, HP-UX aCC, IBM xlC or SGI mipsPro under Unix) and ports (
+wxQT, wxGTK1, wxX11, wxDFB...) are also supported but to a lesser extent.
 Please see the @subpage page_port "platform details page" for more information.
 
 There are no CPU speed requirements but the faster (and more) CPU(s) you have,
