@@ -108,6 +108,7 @@ private:
     void OnExpanded( wxDataViewEvent &event );
     void OnCollapsing( wxDataViewEvent &event );
     void OnCollapsed( wxDataViewEvent &event );
+    void OnSelectionChanging( wxDataViewEvent &event );
     void OnSelectionChanged( wxDataViewEvent &event );
 
     void OnStartEditing( wxDataViewEvent &event );
@@ -379,6 +380,7 @@ wxBEGIN_EVENT_TABLE(MyFrame, wxFrame)
     EVT_DATAVIEW_ITEM_EXPANDED(ID_MUSIC_CTRL, MyFrame::OnExpanded)
     EVT_DATAVIEW_ITEM_COLLAPSING(ID_MUSIC_CTRL, MyFrame::OnCollapsing)
     EVT_DATAVIEW_ITEM_COLLAPSED(ID_MUSIC_CTRL, MyFrame::OnCollapsed)
+    EVT_DATAVIEW_SELECTION_CHANGING(ID_MUSIC_CTRL, MyFrame::OnSelectionChanging)
     EVT_DATAVIEW_SELECTION_CHANGED(ID_MUSIC_CTRL, MyFrame::OnSelectionChanged)
 
     EVT_DATAVIEW_ITEM_START_EDITING(ID_MUSIC_CTRL, MyFrame::OnStartEditing)
@@ -1059,6 +1061,15 @@ void MyFrame::OnActivated( wxDataViewEvent &event )
     {
         wxLogMessage( "Item: %s is expanded", title );
     }
+}
+
+void MyFrame::OnSelectionChanging( wxDataViewEvent &event )
+{
+    wxString title = m_music_model->GetTitle( event.GetItem() );
+    if (title.empty())
+        title = "None";
+
+    wxLogMessage( "wxEVT_DATAVIEW_SELECTION_CHANGING, First selected Item: %s", title );
 }
 
 void MyFrame::OnSelectionChanged( wxDataViewEvent &event )

@@ -1561,6 +1561,7 @@ void wxDataViewCtrlBase::StartEditor(const wxDataViewItem& item, unsigned int co
 
 wxIMPLEMENT_DYNAMIC_CLASS(wxDataViewEvent,wxNotifyEvent);
 
+wxDEFINE_EVENT( wxEVT_DATAVIEW_SELECTION_CHANGING, wxDataViewEvent );
 wxDEFINE_EVENT( wxEVT_DATAVIEW_SELECTION_CHANGED, wxDataViewEvent );
 
 wxDEFINE_EVENT( wxEVT_DATAVIEW_ITEM_ACTIVATED, wxDataViewEvent );

@@ -765,6 +765,7 @@ public:
 
 // events
 
+wxEventType wxEVT_DATAVIEW_SELECTION_CHANGING;
 wxEventType wxEVT_DATAVIEW_SELECTION_CHANGED;
 
 wxEventType wxEVT_DATAVIEW_ITEM_ACTIVATED;
@@ -849,6 +850,8 @@ wxEventType wxEVT_DATAVIEW_ITEM_DROP;
     @endStyleTable
 
     @beginEventEmissionTable{wxDataViewEvent}
+    @event{EVT_DATAVIEW_SELECTION_CHANGING(id, func)}
+           Process a @c wxEVT_DATAVIEW_SELECTION_CHANGING event.
     @event{EVT_DATAVIEW_SELECTION_CHANGED(id, func)}
            Process a @c wxEVT_DATAVIEW_SELECTION_CHANGED event.
     @event{EVT_DATAVIEW_ITEM_ACTIVATED(id, func)}
@@ -3344,6 +3347,8 @@ public:
     This is the event class for the wxDataViewCtrl notifications.
 
     @beginEventTable{wxDataViewEvent}
+    @event{EVT_DATAVIEW_SELECTION_CHANGING(id, func)}
+           Process a @c wxEVT_DATAVIEW_SELECTION_CHANGING event.
     @event{EVT_DATAVIEW_SELECTION_CHANGED(id, func)}
            Process a @c wxEVT_DATAVIEW_SELECTION_CHANGED event.
     @event{EVT_DATAVIEW_ITEM_ACTIVATED(id, func)}
